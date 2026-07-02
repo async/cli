@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { handleAgentsCommand } from "./agents.js";
 import {
   CliError,
@@ -150,8 +151,15 @@ function renderCliError(error: CliError): string {
   return `${lines.join("\n")}\n`;
 }
 
-const entryUrl = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";
+function isCliEntrypoint(): boolean {
+  if (!process.argv[1]) {
+    return false;
+  }
+  const moduleUrl = pathToFileURL(realpathSync(fileURLToPath(import.meta.url))).href;
+  const entryUrl = pathToFileURL(realpathSync(process.argv[1])).href;
+  return moduleUrl === entryUrl;
+}
 
-if (import.meta.url === entryUrl) {
+if (isCliEntrypoint()) {
   process.exitCode = await main();
 }

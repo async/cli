@@ -34,6 +34,9 @@
     "build": "tsc -p tsconfig.json && chmod +x dist/cli.js",
     "check": "node scripts/check.js",
     "pack:check": "pnpm run build && npm --cache .async/npm-cache pack --dry-run --json --ignore-scripts",
+    "local:link": "pnpm run build && node scripts/local-link.js link",
+    "local:status": "node scripts/local-link.js status",
+    "local:unlink": "node scripts/local-link.js unlink",
     "pipeline:build": "async-pipeline run-task build",
     "pipeline:check": "async-pipeline run-task check",
     "pipeline:github:check": "async-pipeline github check",
@@ -70,6 +73,7 @@
     "CHANGELOG.md",
     "README.md",
     "SPEC.md",
+    "scripts/local-link.js",
     "dist"
   ],
   "publishConfig": {

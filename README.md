@@ -73,3 +73,12 @@ pnpm test
 pnpm run pack:check
 pnpm run release:check
 ```
+
+Maintainers who want the shell to prefer this checkout over an npm-installed
+copy can link the local binaries:
+
+```sh
+pnpm run local:link
+pnpm run local:status
+pnpm run local:unlink
+```

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { handleAgentsCommand } from "./agents.js";
 import { CliError, createCommand, listCommands, moveCommand, packageInfo, renderHelp, resolveCommand, runCommand } from "./index.js";
 export async function main(argv = process.argv.slice(2), io = process) {
@@ -120,8 +121,15 @@ function renderCliError(error) {
     lines.push("Run cli help for usage.");
     return `${lines.join("\n")}\n`;
 }
-const entryUrl = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";
-if (import.meta.url === entryUrl) {
+function isCliEntrypoint() {
+    if (!process.argv[1]) {
+        return false;
+    }
+    const moduleUrl = pathToFileURL(realpathSync(fileURLToPath(import.meta.url))).href;
+    const entryUrl = pathToFileURL(realpathSync(process.argv[1])).href;
+    return moduleUrl === entryUrl;
+}
+if (isCliEntrypoint()) {
     process.exitCode = await main();
 }
 //# sourceMappingURL=cli.js.map
