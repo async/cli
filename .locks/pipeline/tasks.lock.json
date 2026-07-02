@@ -1,0 +1,275 @@
+{
+  "version": 1,
+  "generator": "@async/pipeline",
+  "config": "pipeline.ts",
+  "prefix": "pipeline",
+  "runners": [
+    "package"
+  ],
+  "targets": [
+    {
+      "package": "@async/cli"
+    }
+  ],
+  "manifests": [
+    {
+      "path": "package.json",
+      "runner": "package",
+      "field": "scripts",
+      "commands": [
+        {
+          "name": "pipeline:publish",
+          "value": "async-pipeline run publish"
+        },
+        {
+          "name": "pipeline:release-doctor",
+          "value": "async-pipeline run release-doctor"
+        },
+        {
+          "name": "pipeline:snapshot",
+          "value": "async-pipeline run snapshot"
+        },
+        {
+          "name": "pipeline:verify",
+          "value": "async-pipeline run verify"
+        },
+        {
+          "name": "pipeline:task:build",
+          "value": "async-pipeline run-task build"
+        },
+        {
+          "name": "pipeline:task:check",
+          "value": "async-pipeline run-task check"
+        },
+        {
+          "name": "pipeline:task:github.check",
+          "value": "async-pipeline run-task github.check"
+        },
+        {
+          "name": "pipeline:task:pack",
+          "value": "async-pipeline run-task pack"
+        },
+        {
+          "name": "pipeline:task:sync.check",
+          "value": "async-pipeline run-task sync.check"
+        },
+        {
+          "name": "pipeline:task:test",
+          "value": "async-pipeline run-task test"
+        },
+        {
+          "name": "pipeline:task:typecheck",
+          "value": "async-pipeline run-task typecheck"
+        },
+        {
+          "name": "pipeline:build",
+          "value": "async-pipeline run-task build"
+        },
+        {
+          "name": "pipeline:check",
+          "value": "async-pipeline run-task check"
+        },
+        {
+          "name": "pipeline:github:check",
+          "value": "async-pipeline github check"
+        },
+        {
+          "name": "pipeline:github:generate",
+          "value": "async-pipeline github generate"
+        },
+        {
+          "name": "pipeline:pack",
+          "value": "async-pipeline run-task pack"
+        },
+        {
+          "name": "pipeline:publish",
+          "value": "async-pipeline run publish"
+        },
+        {
+          "name": "pipeline:publish:github:main",
+          "value": "async-pipeline publish github main --package ."
+        },
+        {
+          "name": "pipeline:publish:github:pr",
+          "value": "async-pipeline publish github pr --package ."
+        },
+        {
+          "name": "pipeline:publish:github:release",
+          "value": "async-pipeline publish github release --package ."
+        },
+        {
+          "name": "pipeline:publish:npm",
+          "value": "async-pipeline publish npm --package ."
+        },
+        {
+          "name": "pipeline:release-doctor",
+          "value": "async-pipeline run release-doctor"
+        },
+        {
+          "name": "pipeline:release:doctor",
+          "value": "async-pipeline release doctor --package ."
+        },
+        {
+          "name": "pipeline:release:ensure",
+          "value": "async-pipeline release ensure --package ."
+        },
+        {
+          "name": "pipeline:snapshot",
+          "value": "async-pipeline run snapshot"
+        },
+        {
+          "name": "pipeline:sync:check",
+          "value": "async-pipeline sync check"
+        },
+        {
+          "name": "pipeline:sync:generate",
+          "value": "async-pipeline sync generate"
+        },
+        {
+          "name": "pipeline:test",
+          "value": "async-pipeline run-task test"
+        },
+        {
+          "name": "pipeline:typecheck",
+          "value": "async-pipeline run-task typecheck"
+        },
+        {
+          "name": "pipeline:verify",
+          "value": "async-pipeline run verify"
+        },
+        {
+          "name": "pipeline:verify:force",
+          "value": "async-pipeline run verify --force"
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "pipeline:publish",
+      "value": "async-pipeline run publish"
+    },
+    {
+      "name": "pipeline:release-doctor",
+      "value": "async-pipeline run release-doctor"
+    },
+    {
+      "name": "pipeline:snapshot",
+      "value": "async-pipeline run snapshot"
+    },
+    {
+      "name": "pipeline:verify",
+      "value": "async-pipeline run verify"
+    },
+    {
+      "name": "pipeline:task:build",
+      "value": "async-pipeline run-task build"
+    },
+    {
+      "name": "pipeline:task:check",
+      "value": "async-pipeline run-task check"
+    },
+    {
+      "name": "pipeline:task:github.check",
+      "value": "async-pipeline run-task github.check"
+    },
+    {
+      "name": "pipeline:task:pack",
+      "value": "async-pipeline run-task pack"
+    },
+    {
+      "name": "pipeline:task:sync.check",
+      "value": "async-pipeline run-task sync.check"
+    },
+    {
+      "name": "pipeline:task:test",
+      "value": "async-pipeline run-task test"
+    },
+    {
+      "name": "pipeline:task:typecheck",
+      "value": "async-pipeline run-task typecheck"
+    },
+    {
+      "name": "pipeline:build",
+      "value": "async-pipeline run-task build"
+    },
+    {
+      "name": "pipeline:check",
+      "value": "async-pipeline run-task check"
+    },
+    {
+      "name": "pipeline:github:check",
+      "value": "async-pipeline github check"
+    },
+    {
+      "name": "pipeline:github:generate",
+      "value": "async-pipeline github generate"
+    },
+    {
+      "name": "pipeline:pack",
+      "value": "async-pipeline run-task pack"
+    },
+    {
+      "name": "pipeline:publish",
+      "value": "async-pipeline run publish"
+    },
+    {
+      "name": "pipeline:publish:github:main",
+      "value": "async-pipeline publish github main --package ."
+    },
+    {
+      "name": "pipeline:publish:github:pr",
+      "value": "async-pipeline publish github pr --package ."
+    },
+    {
+      "name": "pipeline:publish:github:release",
+      "value": "async-pipeline publish github release --package ."
+    },
+    {
+      "name": "pipeline:publish:npm",
+      "value": "async-pipeline publish npm --package ."
+    },
+    {
+      "name": "pipeline:release-doctor",
+      "value": "async-pipeline run release-doctor"
+    },
+    {
+      "name": "pipeline:release:doctor",
+      "value": "async-pipeline release doctor --package ."
+    },
+    {
+      "name": "pipeline:release:ensure",
+      "value": "async-pipeline release ensure --package ."
+    },
+    {
+      "name": "pipeline:snapshot",
+      "value": "async-pipeline run snapshot"
+    },
+    {
+      "name": "pipeline:sync:check",
+      "value": "async-pipeline sync check"
+    },
+    {
+      "name": "pipeline:sync:generate",
+      "value": "async-pipeline sync generate"
+    },
+    {
+      "name": "pipeline:test",
+      "value": "async-pipeline run-task test"
+    },
+    {
+      "name": "pipeline:typecheck",
+      "value": "async-pipeline run-task typecheck"
+    },
+    {
+      "name": "pipeline:verify",
+      "value": "async-pipeline run verify"
+    },
+    {
+      "name": "pipeline:verify:force",
+      "value": "async-pipeline run verify --force"
+    }
+  ],
+  "hash": "sha256:837a19d5ceb51478ec6093410e203528021dc4b95b56df541cb9ccdca1542456",
+  "generatedAt": "2026-07-02T04:48:14.060Z"
+}

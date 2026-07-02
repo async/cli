@@ -1,0 +1,387 @@
+{
+  "version": 22,
+  "generator": "@async/pipeline",
+  "config": "pipeline.ts",
+  "workflow": ".github/workflows/async-pipeline.yml",
+  "hash": "sha256:274c923321ee7839411c980443a8f207ccd460ec24d45a643383fa023c9546ff",
+  "generatedAt": "2026-07-02T04:48:14.056Z",
+  "actions": [
+    {
+      "id": "actions.checkout",
+      "uses": "actions/checkout",
+      "sha": "de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+      "label": "v6.0.2",
+      "ref": "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2"
+    },
+    {
+      "id": "actions.setup-node",
+      "uses": "actions/setup-node",
+      "sha": "48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e",
+      "label": "v6",
+      "ref": "actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6"
+    },
+    {
+      "id": "async.actions.agent-evidence",
+      "uses": "async/actions/agent-evidence",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/agent-evidence@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.attest",
+      "uses": "async/actions/attest",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/attest@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.cache",
+      "uses": "async/actions/cache",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/cache@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.comment",
+      "uses": "async/actions/comment",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/comment@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.contract",
+      "uses": "async/actions/contract",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/contract@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.dependabot-merge",
+      "uses": "async/actions/dependabot-merge",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/dependabot-merge@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.doctor",
+      "uses": "async/actions/doctor",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/doctor@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.evidence",
+      "uses": "async/actions/evidence",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/evidence@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.hygiene",
+      "uses": "async/actions/hygiene",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/hygiene@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.pages",
+      "uses": "async/actions/pages",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/pages@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.preview",
+      "uses": "async/actions/preview",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/preview@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.publish",
+      "uses": "async/actions/publish",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/publish@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.run",
+      "uses": "async/actions/run",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/run@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.setup",
+      "uses": "async/actions/setup",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/setup@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "async.actions.source-impact",
+      "uses": "async/actions/source-impact",
+      "sha": "41e79159e12a7a2092c6911d850450082a8add09",
+      "label": "v0.1.20",
+      "ref": "async/actions/source-impact@41e79159e12a7a2092c6911d850450082a8add09 # v0.1.20"
+    },
+    {
+      "id": "deno.setup",
+      "uses": "denoland/setup-deno",
+      "sha": "667a34cdef165d8d2b2e98dde39547c9daac7282",
+      "label": "v2.0.4",
+      "ref": "denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4"
+    },
+    {
+      "id": "dependabot.fetch-metadata",
+      "uses": "dependabot/fetch-metadata",
+      "sha": "25dd0e34f4fe68f24cc83900b1fe3fe149efef98",
+      "label": "v3.1.0",
+      "ref": "dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0"
+    },
+    {
+      "id": "pnpm.setup",
+      "uses": "pnpm/setup",
+      "sha": "cf03a9b516e09bc5a90f041fc26fc930c9dc631b",
+      "label": "v1.0.0",
+      "ref": "pnpm/setup@cf03a9b516e09bc5a90f041fc26fc930c9dc631b # v1.0.0"
+    }
+  ],
+  "triggers": {
+    "pull_request": {
+      "types": [
+        "opened",
+        "ready_for_review",
+        "reopened",
+        "synchronize"
+      ]
+    },
+    "push": {
+      "branches": [
+        "main"
+      ]
+    },
+    "release": {
+      "types": [
+        "published"
+      ]
+    },
+    "workflow_dispatch": {}
+  },
+  "jobs": [
+    {
+      "id": "publish",
+      "target": [
+        "publish"
+      ],
+      "trigger": [
+        "manual",
+        "release"
+      ],
+      "env": {
+        "GITHUB_TOKEN": {
+          "kind": "async-pipeline.env.secret",
+          "name": "GITHUB_TOKEN"
+        },
+        "NODE_AUTH_TOKEN": {
+          "kind": "async-pipeline.env.secret",
+          "name": "NPM_TOKEN"
+        }
+      },
+      "environment": {
+        "name": "npm-publish",
+        "url": "https://www.npmjs.com/package/@async/cli"
+      },
+      "requires": {
+        "provenance": true
+      },
+      "github": {
+        "permissions": {
+          "contents": "write",
+          "idToken": "write",
+          "packages": "write"
+        }
+      },
+      "if": "(github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'publish') || (github.event_name == 'release' && (github.event.action == 'published'))"
+    },
+    {
+      "id": "release-doctor",
+      "target": [
+        "release.doctor"
+      ],
+      "trigger": [
+        "manual"
+      ],
+      "env": {
+        "GITHUB_TOKEN": {
+          "kind": "async-pipeline.env.secret",
+          "name": "GITHUB_TOKEN"
+        }
+      },
+      "github": {
+        "permissions": {
+          "contents": "read",
+          "packages": "read"
+        }
+      },
+      "if": "github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'release-doctor'"
+    },
+    {
+      "id": "snapshot",
+      "target": [
+        "snapshot"
+      ],
+      "trigger": [
+        "main"
+      ],
+      "env": {
+        "GITHUB_TOKEN": {
+          "kind": "async-pipeline.env.secret",
+          "name": "GITHUB_TOKEN"
+        }
+      },
+      "github": {
+        "permissions": {
+          "contents": "write",
+          "packages": "write"
+        }
+      },
+      "if": "github.event_name == 'push' && (github.ref == 'refs/heads/main')"
+    },
+    {
+      "id": "verify",
+      "target": [
+        "pack"
+      ],
+      "trigger": [
+        "pr",
+        "main",
+        "release",
+        "manual"
+      ],
+      "env": {},
+      "if": "(github.event_name == 'pull_request') || (github.event_name == 'push' && (github.ref == 'refs/heads/main')) || (github.event_name == 'release' && (github.event.action == 'published')) || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'verify')"
+    }
+  ],
+  "packageManager": "pnpm",
+  "packageManagerVersion": "11.7.0",
+  "command": "pnpm async-pipeline",
+  "setup": "pnpm",
+  "nodeVersion": "24",
+  "runtime": [
+    "node@24"
+  ],
+  "taskCache": false,
+  "dependencyCache": false,
+  "dependabotAutoMerge": {
+    "enabled": false,
+    "ecosystems": [
+      "github-actions",
+      "npm",
+      "deno"
+    ]
+  },
+  "packagePreviews": {
+    "enabled": true,
+    "registry": "https://npm.pkg.github.com",
+    "tokenEnv": "GITHUB_TOKEN",
+    "comment": true,
+    "package": ".",
+    "target": "pack"
+  },
+  "evidence": {
+    "enabled": false,
+    "job": "evidence",
+    "paths": [
+      ".async/runs"
+    ],
+    "receiptPaths": [
+      ".async/actions/receipts/**/*.json"
+    ],
+    "artifactNamePrefix": "async-evidence",
+    "retentionDays": 14,
+    "ifNoFilesFound": "warn",
+    "includeSummary": true
+  },
+  "sourceImpact": {
+    "enabled": false,
+    "jobs": [],
+    "generatedJobs": []
+  },
+  "attest": {
+    "enabled": false,
+    "artifacts": [],
+    "subjectManifest": ".async/attest/subjects.json",
+    "sbomPath": ".async/attest/sbom.json",
+    "evidencePath": ".async/actions/receipts/attest.json",
+    "requireNpmProvenance": false,
+    "tarballScan": false,
+    "githubAttestation": false
+  },
+  "contract": {
+    "enabled": false,
+    "mode": "off",
+    "job": "contract",
+    "api": true,
+    "claims": true,
+    "schema": {
+      "enabled": false,
+      "sources": [],
+      "output": ".async/contract/schema.json"
+    },
+    "packagePath": ".",
+    "evidenceDir": ".async/contract",
+    "annotations": true
+  },
+  "hygiene": {
+    "enabled": false,
+    "mode": "off",
+    "job": "hygiene",
+    "profiles": [
+      "package",
+      "github",
+      "docs"
+    ],
+    "releaseGate": false,
+    "packagePath": ".",
+    "evidenceDir": ".async/hygiene",
+    "annotations": true
+  },
+  "bridge": {
+    "enabled": false,
+    "mode": "off",
+    "schedule": false,
+    "pullRequest": true,
+    "branchPrefix": "async/bridge/",
+    "allowedPaths": [],
+    "endpointVar": "ASYNC_PROJECT_URL",
+    "tokenEnv": "ASYNC_PROJECT_TOKEN",
+    "packageVersion": "latest",
+    "job": "async-bridge",
+    "actionsJob": {
+      "enabled": false,
+      "scheduled": false,
+      "manual": false
+    }
+  },
+  "pages": {
+    "enabled": false,
+    "job": "pages",
+    "build": {
+      "kind": "static",
+      "path": ".async/pages"
+    },
+    "triggers": {
+      "pullRequest": true,
+      "main": {
+        "branch": "main"
+      },
+      "manual": true
+    }
+  },
+  "manualDispatchJobs": [
+    "publish",
+    "release-doctor",
+    "verify"
+  ]
+}
