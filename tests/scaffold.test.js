@@ -28,6 +28,7 @@ test("help states the router surface", () => {
 
   assert.match(help, /cli <command\.\.\.> \[args\.\.\.\]/);
   assert.match(help, /cli --list \[--json\]/);
+  assert.match(help, /cli --cp <command\.\.\.> \[--to root\|local\]/);
   assert.match(help, /cli --agents \[--write\|--check\] \[--claude\]/);
 });
 

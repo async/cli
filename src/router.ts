@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { constants as fsConstants, statSync } from "node:fs";
-import { access, mkdir, readdir, readFile, rename, rmdir, stat, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, readdir, readFile, rename, rmdir, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -61,6 +61,10 @@ export interface MoveCommandOptions extends DiscoverRootsOptions {
   to?: "root" | "local";
 }
 
+export interface CopyCommandOptions extends DiscoverRootsOptions {
+  to?: "root" | "local";
+}
+
 export interface CommandRoot {
   path: string;
   scope: "local" | "root";
@@ -98,6 +102,13 @@ export interface CreateCommandResult {
 }
 
 export interface MoveCommandResult {
+  command: string[];
+  from: string;
+  to: string;
+  warnings: string[];
+}
+
+export interface CopyCommandResult {
   command: string[];
   from: string;
   to: string;
@@ -244,6 +255,29 @@ export async function createCommand(options: CreateCommandOptions = {}, commandP
 
 export async function moveCommand(options: MoveCommandOptions = {}, commandPath: string[]): Promise<MoveCommandResult> {
   validateCommandPath(commandPath);
+  const { from, to, sourceRoot } = await resolveTransfer(options, commandPath);
+
+  const warnings = await escapingImportWarnings(from, "move");
+  await mkdir(path.dirname(to), { recursive: true });
+  await rename(from, to);
+  await removeEmptyParents(path.dirname(from), sourceRoot.path);
+  return { command: commandPath, from, to, warnings };
+}
+
+export async function copyCommand(options: CopyCommandOptions = {}, commandPath: string[]): Promise<CopyCommandResult> {
+  validateCommandPath(commandPath);
+  const { from, to } = await resolveTransfer(options, commandPath);
+
+  const warnings = await escapingImportWarnings(from, "copy");
+  await mkdir(path.dirname(to), { recursive: true });
+  await cp(from, to, { recursive: true, errorOnExist: true, force: false });
+  return { command: commandPath, from, to, warnings };
+}
+
+async function resolveTransfer(
+  options: MoveCommandOptions | CopyCommandOptions,
+  commandPath: string[]
+): Promise<{ from: string; to: string; sourceRoot: CommandRoot }> {
   const roots = await discoverRoots(options);
   const target = options.to ?? "root";
   const globalRoot = roots.find((root) => root.scope === "root");
@@ -272,11 +306,7 @@ export async function moveCommand(options: MoveCommandOptions = {}, commandPath:
     throw new CliError("TARGET_EXISTS", `Refusing to overwrite existing command directory: ${to}`);
   }
 
-  const warnings = await escapingImportWarnings(from);
-  await mkdir(path.dirname(to), { recursive: true });
-  await rename(from, to);
-  await removeEmptyParents(path.dirname(from), sourceRoot.path);
-  return { command: commandPath, from, to, warnings };
+  return { from, to, sourceRoot };
 }
 
 async function collectCandidates(roots: CommandRoot[]): Promise<Candidate[]> {
@@ -575,7 +605,7 @@ function scaffoldScript(commandPath: string[]): string {
   ].join("\n");
 }
 
-async function escapingImportWarnings(commandDirectory: string): Promise<string[]> {
+async function escapingImportWarnings(commandDirectory: string, operation: "copy" | "move"): Promise<string[]> {
   const warnings = [];
   for (const scriptFile of scriptFiles) {
     const script = path.join(commandDirectory, scriptFile);
@@ -584,7 +614,7 @@ async function escapingImportWarnings(commandDirectory: string): Promise<string[
     }
     const text = await readFile(script, "utf8");
     if (/\bfrom\s+["']\.\.\//.test(text) || /\bimport\s*\(\s*["']\.\.\//.test(text)) {
-      warnings.push(`${scriptFile} imports through ../ and may not survive the move unchanged.`);
+      warnings.push(`${scriptFile} imports through ../ and may not survive the ${operation} unchanged.`);
     }
   }
   return warnings;

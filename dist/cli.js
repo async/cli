@@ -2,7 +2,7 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { handleAgentsCommand } from "./agents.js";
-import { CliError, createCommand, listCommands, moveCommand, packageInfo, renderHelp, resolveCommand, runCommand } from "./index.js";
+import { CliError, copyCommand, createCommand, listCommands, moveCommand, packageInfo, renderHelp, resolveCommand, runCommand } from "./index.js";
 export async function main(argv = process.argv.slice(2), io = process) {
     const [first] = argv;
     try {
@@ -48,17 +48,24 @@ export async function main(argv = process.argv.slice(2), io = process) {
             return 0;
         }
         if (first === "--mv") {
-            const toIndex = argv.indexOf("--to");
-            const target = toIndex >= 0 ? argv[toIndex + 1] : "root";
-            if (target !== "root" && target !== "local") {
-                io.stderr.write("--mv --to must be root or local\n");
+            const { target, commandPath } = parseTransferArgs("--mv", argv, io);
+            if (!target) {
                 return 2;
             }
-            const commandPath = toIndex >= 0
-                ? argv.slice(1, toIndex)
-                : argv.slice(1);
             const result = await moveCommand({ to: target }, commandPath);
             io.stdout.write(`moved ${result.from} -> ${result.to}\n`);
+            for (const warning of result.warnings) {
+                io.stderr.write(`warning: ${warning}\n`);
+            }
+            return 0;
+        }
+        if (first === "--cp") {
+            const { target, commandPath } = parseTransferArgs("--cp", argv, io);
+            if (!target) {
+                return 2;
+            }
+            const result = await copyCommand({ to: target }, commandPath);
+            io.stdout.write(`copied ${result.from} -> ${result.to}\n`);
             for (const warning of result.warnings) {
                 io.stderr.write(`warning: ${warning}\n`);
             }
@@ -94,6 +101,18 @@ async function printHelp(prefix, io) {
 }
 function cleanFlagArgs(args, flags) {
     return args.filter((arg) => !flags.includes(arg));
+}
+function parseTransferArgs(flag, argv, io) {
+    const toIndex = argv.indexOf("--to");
+    const target = toIndex >= 0 ? argv[toIndex + 1] : "root";
+    if (target !== "root" && target !== "local") {
+        io.stderr.write(`${flag} --to must be root or local\n`);
+        return { target: null, commandPath: [] };
+    }
+    const commandPath = toIndex >= 0
+        ? argv.slice(1, toIndex)
+        : argv.slice(1);
+    return { target, commandPath };
 }
 function renderList(commands) {
     if (commands.length === 0) {

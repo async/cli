@@ -7,6 +7,7 @@ import test from "node:test";
 
 import {
   CliError,
+  copyCommand,
   createCommand,
   discoverRoots,
   listCommands,
@@ -164,6 +165,25 @@ test("--mv moves command directories and warns about escaping imports", async ()
     await writeScript(path.join(globalRoot, "ops", "rollback", "script.js"));
     const local = await moveCommand({ cwd: project, env, to: "local" }, ["ops", "rollback"]);
     assert.equal(local.to, path.join(project, ".cli", "ops", "rollback"));
+    await assert.rejects(stat(path.join(globalRoot, "ops", "rollback", "script.js")), { code: "ENOENT" });
+  });
+});
+
+test("--cp copies command directories without removing the source", async () => {
+  await withFixture(async ({ project, globalRoot, env }) => {
+    await writeScript(path.join(globalRoot, "ops", "seed", "script.js"), "import x from \"../lib.js\";\nconsole.log(x);\n");
+
+    const result = spawnCli(["--cp", "ops", "seed", "--to", "local"], { cwd: project, env });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /copied /);
+    assert.match(result.stderr, /warning: script\.js imports through/);
+    assert.ok((await stat(path.join(globalRoot, "ops", "seed", "script.js"))).isFile());
+    assert.ok((await stat(path.join(project, ".cli", "ops", "seed", "script.js"))).isFile());
+
+    await writeScript(path.join(project, ".cli", "ops", "promote", "script.js"));
+    const promoted = await copyCommand({ cwd: project, env, to: "root" }, ["ops", "promote"]);
+    assert.equal(promoted.to, path.join(globalRoot, "ops", "promote"));
+    assert.ok((await stat(path.join(project, ".cli", "ops", "promote", "script.js"))).isFile());
   });
 });
 

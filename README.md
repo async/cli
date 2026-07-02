@@ -17,7 +17,7 @@ maps to a command directory like:
 The v1 contract is defined in `SPEC.md`. The package implements local and
 user-global command discovery, command resolution, script execution,
 machine-readable listing, `--which`, `--new`, `--mv`, context-file pointers,
-help, and version output.
+help, command copy, and version output.
 
 ## Install
 
@@ -52,6 +52,8 @@ cli --list --json
 cli --which gh pull
 cli --new gh pr
 cli --new gh pr --root
+cli --cp gh pull
+cli --cp gh pull --to local
 cli --mv gh pull
 cli --mv gh pull --to local
 cli --agents
@@ -64,6 +66,10 @@ cli --version
 Command scripts run from the caller's original working directory. `.js` and
 `.mjs` scripts run directly with Node; `.ts` and `.mts` scripts use Node 24
 native type stripping.
+
+Use `--cp` to clone a command directory between local and user-global command
+trees without removing the source. Use `--mv` when the source should be
+transferred instead.
 
 ## Development
 

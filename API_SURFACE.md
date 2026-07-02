@@ -16,6 +16,7 @@
 
 ```js
 import {
+  copyCommand,
   createCommand,
   discoverRoots,
   listCommands,
@@ -48,6 +49,11 @@ forwarded arguments, and `CLI_*` environment values.
 ### `createCommand(options, commandPath)`
 
 Creates a command directory with a default `script.ts`.
+
+### `copyCommand(options, commandPath)`
+
+Copies a whole command directory between local and user-global roots and warns
+when a script imports through `../`.
 
 ### `moveCommand(options, commandPath)`
 

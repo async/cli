@@ -30,6 +30,9 @@ export interface CreateCommandOptions extends DiscoverRootsOptions {
 export interface MoveCommandOptions extends DiscoverRootsOptions {
     to?: "root" | "local";
 }
+export interface CopyCommandOptions extends DiscoverRootsOptions {
+    to?: "root" | "local";
+}
 export interface CommandRoot {
     path: string;
     scope: "local" | "root";
@@ -67,10 +70,17 @@ export interface MoveCommandResult {
     to: string;
     warnings: string[];
 }
+export interface CopyCommandResult {
+    command: string[];
+    from: string;
+    to: string;
+    warnings: string[];
+}
 export declare function discoverRoots(options?: DiscoverRootsOptions): Promise<CommandRoot[]>;
 export declare function resolveCommand(options: ResolveCommandOptions | undefined, args: string[]): Promise<CommandResolution>;
 export declare function listCommands(options?: ListCommandsOptions): Promise<CommandList>;
 export declare function runCommand(options: RunCommandOptions | undefined, args: string[]): Promise<number>;
 export declare function createCommand(options: CreateCommandOptions | undefined, commandPath: string[]): Promise<CreateCommandResult>;
 export declare function moveCommand(options: MoveCommandOptions | undefined, commandPath: string[]): Promise<MoveCommandResult>;
+export declare function copyCommand(options: CopyCommandOptions | undefined, commandPath: string[]): Promise<CopyCommandResult>;
 //# sourceMappingURL=router.d.ts.map

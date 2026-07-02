@@ -159,6 +159,9 @@ cli --list --json
 cli --which gh pull
 cli --new gh pr
 cli --new gh pr --root
+cli --cp gh pull
+cli --cp gh pull --to root
+cli --cp gh pull --to local
 cli --mv gh pull
 cli --mv gh pull --to root
 cli --mv gh pull --to local
@@ -177,6 +180,11 @@ cli --version
 - `cli --which <cmd...>` prints the selected script and shadowed alternatives.
 - `cli --new <cmd...>` creates a command directory with `script.ts`.
 - `cli --new <cmd...> --root` creates under the root command tree.
+- `cli --cp <cmd...>` defaults to `--to root`.
+- `cli --cp <cmd...> --to root` copies the nearest matching local command
+  directory into the root command tree.
+- `cli --cp <cmd...> --to local` copies a root command directory into the
+  current Git root's `.cli`.
 - `cli --mv <cmd...>` defaults to `--to root`.
 - `cli --mv <cmd...> --to root` moves the nearest matching local command
   directory into the root command tree.
@@ -200,6 +208,16 @@ Move rules:
 - Do not copy sibling `lib/` or `_lib/` directories.
 - Warn if `script.*` has relative imports escaping the command directory via
   `../`, because the command may not survive a move cleanly.
+
+Copy rules:
+
+- Copy the whole command directory.
+- Preserve the command path.
+- Refuse to overwrite an existing target unless a future `--force` option is
+  added.
+- Do not copy sibling `lib/` or `_lib/` directories.
+- Warn if `script.*` has relative imports escaping the command directory via
+  `../`, because the command may not survive a copy cleanly.
 
 ### Agent Integration
 
@@ -273,6 +291,7 @@ committed docs do not need to embed command listings.
   - `resolveCommand(options, args)`
   - `runCommand(options, args)`
   - `createCommand(options, commandPath)`
+  - `copyCommand(options, commandPath)`
   - `moveCommand(options, commandPath)`
 
 Environment overrides:
@@ -287,11 +306,11 @@ ASYNC_CLI_PROJECT_ROOT
 - Unknown command: concise error, nearest suggestions, and `cli help` hint.
 - Partial namespace: list available subcommands below the matched prefix.
 - Ambiguous `script.*` directory: list the conflicting files.
-- Unsafe path segment in routing, `--new`, or `--mv`: reject empty segments,
-  `.`, `..`, absolute paths, path separators, ignored names, hidden segments,
-  and leading-underscore segments.
-- No Git root for `--new` without `--root` or `--mv --to local`: print an
-  actionable message.
+- Unsafe path segment in routing, `--new`, `--cp`, or `--mv`: reject empty
+  segments, `.`, `..`, absolute paths, path separators, ignored names, hidden
+  segments, and leading-underscore segments.
+- No Git root for `--new` without `--root`, `--cp --to local`, or
+  `--mv --to local`: print an actionable message.
 - `--agents --check` drift: exit nonzero with a `cli --agents --write` hint.
 - Script failure: preserve the script's own exit code.
 

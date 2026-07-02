@@ -12,6 +12,7 @@ export type AsyncCliPackageInfo = typeof packageInfo;
 
 export {
   CliError,
+  copyCommand,
   createCommand,
   discoverRoots,
   listCommands,
@@ -25,6 +26,8 @@ export type {
   CommandEntry,
   CommandResolution,
   CommandRoot,
+  CopyCommandOptions,
+  CopyCommandResult,
   CreateCommandOptions,
   DiscoverRootsOptions,
   ListCommandsOptions,
@@ -49,6 +52,7 @@ export function renderHelp(commands: string[] = []): string {
     "  cli --list [--json]",
     "  cli --which <command...>",
     "  cli --new <command...> [--root]",
+    "  cli --cp <command...> [--to root|local]",
     "  cli --mv <command...> [--to root|local]",
     "  cli --agents [--write|--check] [--claude]",
     "  cli <command...> [args...]",

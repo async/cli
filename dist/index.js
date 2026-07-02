@@ -7,7 +7,7 @@ export const packageInfo = Object.freeze({
     routerStatus: "implemented",
     contextPointerStatus: "implemented"
 });
-export { CliError, createCommand, discoverRoots, listCommands, moveCommand, resolveCommand, runCommand } from "./router.js";
+export { CliError, copyCommand, createCommand, discoverRoots, listCommands, moveCommand, resolveCommand, runCommand } from "./router.js";
 export function renderHelp(commands = []) {
     const commandLines = commands.length > 0
         ? ["", "Available commands:", ...commands.map((command) => `  ${command}`)]
@@ -23,6 +23,7 @@ export function renderHelp(commands = []) {
         "  cli --list [--json]",
         "  cli --which <command...>",
         "  cli --new <command...> [--root]",
+        "  cli --cp <command...> [--to root|local]",
         "  cli --mv <command...> [--to root|local]",
         "  cli --agents [--write|--check] [--claude]",
         "  cli <command...> [args...]",
