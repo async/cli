@@ -1,2 +1,2 @@
 minimumReleaseAgeExclude:
-  - '@async/pipeline@0.9.31'
+  - '@async/pipeline'

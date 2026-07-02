@@ -11,8 +11,8 @@ test("package metadata defines the @async/cli scaffold", async () => {
   assert.equal(packageJson.name, "@async/cli");
   assert.equal(packageJson.type, "module");
   assert.equal(packageJson.engines.node, ">=24");
-  assert.equal(packageJson.bin.cli, "./dist/cli.js");
-  assert.equal(packageJson.bin["async-cli"], "./dist/cli.js");
+  assert.equal(packageJson.bin.cli, "dist/cli.js");
+  assert.equal(packageJson.bin["async-cli"], "dist/cli.js");
   assert.deepEqual(Object.keys(packageJson.dependencies ?? {}), []);
 });
 
@@ -37,5 +37,5 @@ test("cli --version prints the package version", () => {
   });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), "0.1.0");
+  assert.equal(result.stdout.trim(), "0.1.1");
 });

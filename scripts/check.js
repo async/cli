@@ -17,11 +17,11 @@ if (packageJson.engines?.node !== ">=24") {
   errors.push("package.json must require Node >=24");
 }
 
-if (packageJson.bin?.cli !== "./dist/cli.js") {
+if (packageJson.bin?.cli !== "dist/cli.js") {
   errors.push("package.json must expose cli bin");
 }
 
-if (packageJson.bin?.["async-cli"] !== "./dist/cli.js") {
+if (packageJson.bin?.["async-cli"] !== "dist/cli.js") {
   errors.push("package.json must expose async-cli bin");
 }
 

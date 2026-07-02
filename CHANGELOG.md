@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1 - 2026-07-02
+
+- Pins generated workflows to the publish action that repairs scoped package
+  public access before registry verification.
+- Updates the Pipeline devDependency used to generate committed workflow files.
+- Normalizes binary paths to match npm package metadata.
+
 ## 0.1.0 - 2026-07-02
 
 - Initial package scaffold for `@async/cli`.

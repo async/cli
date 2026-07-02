@@ -1,6 +1,6 @@
 {
   "name": "@async/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Filesystem-routed project and user-global commands for Async workspaces.",
   "license": "MIT",
   "type": "module",
@@ -27,8 +27,8 @@
     }
   },
   "bin": {
-    "cli": "./dist/cli.js",
-    "async-cli": "./dist/cli.js"
+    "cli": "dist/cli.js",
+    "async-cli": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && chmod +x dist/cli.js",
@@ -81,7 +81,7 @@
   },
   "sideEffects": false,
   "devDependencies": {
-    "@async/pipeline": "0.9.31",
+    "@async/pipeline": "0.9.33",
     "@types/node": "24.12.4",
     "typescript": "6.0.3"
   }
