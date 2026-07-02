@@ -1,0 +1,157 @@
+#!/usr/bin/env node
+import { pathToFileURL } from "node:url";
+import { handleAgentsCommand } from "./agents.js";
+import {
+  CliError,
+  createCommand,
+  listCommands,
+  moveCommand,
+  packageInfo,
+  renderHelp,
+  resolveCommand,
+  runCommand
+} from "./index.js";
+import type { CommandEntry } from "./index.js";
+
+export interface CliIo {
+  stdout: Pick<NodeJS.WriteStream, "write">;
+  stderr: Pick<NodeJS.WriteStream, "write">;
+}
+
+export async function main(argv = process.argv.slice(2), io: CliIo = process): Promise<number> {
+  const [first] = argv;
+
+  try {
+    if (!first || first === "--help" || first === "-h") {
+      const listing = await listCommands();
+      io.stdout.write(renderHelp(listing.commands.filter((command) => !command.shadowed).map((command) => command.command)));
+      return 0;
+    }
+
+    if (first === "help") {
+      const prefix = argv.slice(1);
+      await printHelp(prefix, io);
+      return 0;
+    }
+
+    if (first === "--version" || first === "version") {
+      io.stdout.write(`${packageInfo.version}\n`);
+      return 0;
+    }
+
+    if (first === "--list") {
+      const listing = await listCommands();
+      if (argv.includes("--json")) {
+        io.stdout.write(`${JSON.stringify(listing, null, 2)}\n`);
+      } else {
+        io.stdout.write(renderList(listing.commands));
+      }
+      return 0;
+    }
+
+    if (first === "--which") {
+      const resolution = await resolveCommand({}, argv.slice(1));
+      io.stdout.write([
+        `command: ${resolution.command.join(" ")}`,
+        `script: ${resolution.script}`,
+        `scope: ${resolution.root.scope}`,
+        `argv: ${JSON.stringify(resolution.argv)}`,
+        ...resolution.shadows.map((script) => `shadows: ${script}`),
+        ""
+      ].join("\n"));
+      return 0;
+    }
+
+    if (first === "--new") {
+      const result = await createCommand({ root: argv.includes("--root") ? "root" : "auto" }, cleanFlagArgs(argv.slice(1), ["--root"]));
+      io.stdout.write(`created ${result.script}\n`);
+      return 0;
+    }
+
+    if (first === "--mv") {
+      const toIndex = argv.indexOf("--to");
+      const target = toIndex >= 0 ? argv[toIndex + 1] : "root";
+      if (target !== "root" && target !== "local") {
+        io.stderr.write("--mv --to must be root or local\n");
+        return 2;
+      }
+      const commandPath = toIndex >= 0
+        ? argv.slice(1, toIndex)
+        : argv.slice(1);
+      const result = await moveCommand({ to: target }, commandPath);
+      io.stdout.write(`moved ${result.from} -> ${result.to}\n`);
+      for (const warning of result.warnings) {
+        io.stderr.write(`warning: ${warning}\n`);
+      }
+      return 0;
+    }
+
+    if (first === "--agents") {
+      return await handleAgentsCommand(argv.slice(1), io);
+    }
+
+    return await runCommand({}, argv);
+  } catch (error) {
+    if (error instanceof CliError) {
+      io.stderr.write(renderCliError(error));
+      return error.exitCode;
+    }
+    throw error;
+  }
+}
+
+async function printHelp(prefix: string[], io: CliIo): Promise<void> {
+  if (prefix.length === 0) {
+    const listing = await listCommands();
+    io.stdout.write(renderHelp(listing.commands.filter((command) => !command.shadowed).map((command) => command.command)));
+    return;
+  }
+
+  const prefixText = prefix.join(" ");
+  const listing = await listCommands();
+  const matches = listing.commands
+    .filter((command) => !command.shadowed && command.command.startsWith(prefixText))
+    .map((command) => command.description ? `${command.command} - ${command.description}` : command.command);
+  io.stdout.write(matches.length > 0
+    ? `${matches.join("\n")}\n`
+    : `No commands found below ${prefixText}\n`);
+}
+
+function cleanFlagArgs(args: string[], flags: string[]): string[] {
+  return args.filter((arg) => !flags.includes(arg));
+}
+
+function renderList(commands: CommandEntry[]): string {
+  if (commands.length === 0) {
+    return "No commands found.\n";
+  }
+
+  return `${commands.map((command) => {
+    const suffix = command.shadowed ? " (shadowed)" : "";
+    const description = command.description ? ` - ${command.description}` : "";
+    return `${command.command}${suffix}${description}`;
+  }).join("\n")}\n`;
+}
+
+function renderCliError(error: CliError): string {
+  const lines = [error.message];
+  if (error.suggestions.length > 0) {
+    lines.push(`Suggestions: ${error.suggestions.join(", ")}`);
+  }
+  if (error.subcommands.length > 0) {
+    lines.push("Available subcommands:");
+    lines.push(...error.subcommands.map((command) => `  ${command}`));
+  }
+  if (error.files.length > 0) {
+    lines.push("Files:");
+    lines.push(...error.files.map((file) => `  ${file}`));
+  }
+  lines.push("Run cli help for usage.");
+  return `${lines.join("\n")}\n`;
+}
+
+const entryUrl = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";
+
+if (import.meta.url === entryUrl) {
+  process.exitCode = await main();
+}
