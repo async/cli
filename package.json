@@ -1,6 +1,6 @@
 {
   "name": "@async/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Filesystem-routed project and user-global commands for Async workspaces.",
   "license": "MIT",
   "type": "module",

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 - 2026-07-02
+
+- Adds `cli --cp <command...> [--to root|local]` and `copyCommand()` for
+  non-destructive command directory transfers between local and user-global
+  command trees.
+
 ## 0.1.1 - 2026-07-02
 
 - Pins generated workflows to the publish action that repairs scoped package

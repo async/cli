@@ -26,7 +26,7 @@ test("local link script links both binaries to the checkout build", async () => 
       encoding: "utf8"
     });
     assert.equal(cli.status, 0, cli.stderr);
-    assert.equal(cli.stdout.trim(), "0.1.1");
+    assert.equal(cli.stdout.trim(), "0.1.2");
 
     const status = runLocalLink(["status", "--bin-dir", binDir, "--json"]);
     assert.equal(status.status, 0, status.stderr);
