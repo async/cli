@@ -15,7 +15,7 @@
   "bugs": {
     "url": "https://github.com/async/cli/issues"
   },
-  "homepage": "https://github.com/async/cli#readme",
+  "homepage": "https://async.github.io/cli/",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -33,15 +33,16 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && chmod +x dist/cli.js",
     "check": "node scripts/check.js",
-    "pack:check": "pnpm run build && npm --cache .async/npm-cache pack --dry-run --json --ignore-scripts",
     "local:link": "pnpm run build && node scripts/local-link.js link",
     "local:status": "node scripts/local-link.js status",
     "local:unlink": "node scripts/local-link.js unlink",
+    "pack:check": "pnpm run build && npm --cache .async/npm-cache pack --dry-run --json --ignore-scripts",
     "pipeline:build": "async-pipeline run-task build",
     "pipeline:check": "async-pipeline run-task check",
     "pipeline:github:check": "async-pipeline github check",
     "pipeline:github:generate": "async-pipeline github generate",
     "pipeline:pack": "async-pipeline run-task pack",
+    "pipeline:pages": "async-pipeline run-task docs.site",
     "pipeline:publish": "async-pipeline run publish",
     "pipeline:publish:github:main": "async-pipeline publish github main --package .",
     "pipeline:publish:github:pr": "async-pipeline publish github pr --package .",
@@ -55,6 +56,7 @@
     "pipeline:sync:generate": "async-pipeline sync generate",
     "pipeline:task:build": "async-pipeline run-task build",
     "pipeline:task:check": "async-pipeline run-task check",
+    "pipeline:task:docs.site": "async-pipeline run-task docs.site",
     "pipeline:task:github.check": "async-pipeline run-task github.check",
     "pipeline:task:pack": "async-pipeline run-task pack",
     "pipeline:task:sync.check": "async-pipeline run-task sync.check",

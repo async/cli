@@ -3,8 +3,8 @@
   "generator": "@async/pipeline",
   "config": "pipeline.ts",
   "workflow": ".github/workflows/async-pipeline.yml",
-  "hash": "sha256:eb8ba911d628d2d69bab2ee17b2d877ef770bc429deb641a5264bcf017c2dfa0",
-  "generatedAt": "2026-07-02T06:40:21.439Z",
+  "hash": "sha256:841b44b746dcf4a736e2994b303696873f0ca45e6c50de91a281919ed6e0c600",
+  "generatedAt": "2026-07-03T02:59:07.657Z",
   "actions": [
     {
       "id": "actions.checkout",
@@ -400,7 +400,8 @@
     }
   },
   "pages": {
-    "enabled": false,
+    "enabled": true,
+    "target": "docs.site",
     "job": "pages",
     "build": {
       "kind": "static",
@@ -415,6 +416,7 @@
     }
   },
   "manualDispatchJobs": [
+    "pages",
     "publish",
     "release-doctor",
     "verify"

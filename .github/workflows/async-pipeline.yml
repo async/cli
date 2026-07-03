@@ -23,6 +23,7 @@ on:
         required: true
         type: choice
         options:
+          - "pages"
           - "publish"
           - "release-doctor"
           - "verify"
@@ -288,6 +289,59 @@ jobs:
           artifact-name: async-pipeline-${{ github.job }}-runs
         env:
           CI: true
+
+  pages:
+    name: pages
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main')) || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'pages')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup pnpm runtime
+        uses: pnpm/setup@cf03a9b516e09bc5a90f041fc26fc930c9dc631b # v1.0.0
+        with:
+          version: 11.7.0
+          runtime: node@24
+          install: false
+          cache: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Pages target
+        uses: async/actions/run@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        with:
+          command: "pnpm async-pipeline github check && pnpm async-pipeline run-task docs.site"
+          check-generated: false
+          artifact-name: async-pipeline-${{ github.job }}-runs
+        env:
+          CI: true
+
+      - name: Upload Pages artifact
+        uses: async/actions/pages@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        with:
+          mode: static
+          path: ".async/pages"
+
+  pages-deploy:
+    name: pages-deploy
+    needs: "pages"
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: "github-pages"
+      url: "${{ steps.deployment.outputs.page_url }}"
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: async/actions/pages@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        with:
+          upload: false
+          deploy: true
 
   package-preview:
     name: package-preview

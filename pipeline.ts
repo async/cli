@@ -39,17 +39,19 @@ export default definePipeline({
       nodeVersion: 24,
       cache: false,
       dependencyCache: false,
-      packagePreviews: true
+      packagePreviews: true,
+      pages: { target: "docs.site" }
     },
     tasks: {
       prefix: "pipeline",
       runners: ["package"],
       targets: [{ package: "@async/cli" }],
       jobs: ["publish", "release-doctor", "snapshot", "verify"],
-      tasks: ["build", "check", "github.check", "pack", "sync.check", "test", "typecheck"],
+      tasks: ["build", "check", "docs.site", "github.check", "pack", "sync.check", "test", "typecheck"],
       scripts: {
         build: "run-task build",
         check: "run-task check",
+        "pages": "run-task docs.site",
         "github:check": "github check",
         "github:generate": "github generate",
         pack: "run-task pack",
@@ -98,6 +100,13 @@ export default definePipeline({
       inputs: packageInputs,
       cache: false,
       run: sh`node --test tests/*.test.js`
+    }),
+    "docs.site": task({
+      description: "Build the GitHub Pages documentation site.",
+      inputs: ["README.md", "API_SURFACE.md", "scripts/build-pages.js"],
+      outputs: [".async/pages/**"],
+      cache: false,
+      run: sh`node scripts/build-pages.js`
     }),
     "sync.check": task({
       description: "Validate generated package scripts and task locks from pipeline.ts.",
