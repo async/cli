@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 - 2026-07-06
+
+- Exports `CommandList`, `CreateCommandResult`, and `MoveCommandResult` from
+  the root package type surface.
+- Includes `API_SURFACE.md` and `ROUTING.md` in the published package and
+  generated Pages documentation.
+
 ## 0.2.0 - 2026-07-06
 
 - Adds a direnv-style trust model for repo-local overlays: `cli --trust`,

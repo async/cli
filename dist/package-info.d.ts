@@ -1,6 +1,6 @@
 export declare const packageInfo: Readonly<{
     name: "@async/cli";
-    version: "0.2.0";
+    version: "0.2.1";
     node: ">=24";
     binaries: readonly ["cli", "async-cli"];
     specVersion: 2;
