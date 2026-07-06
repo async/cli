@@ -1,25 +1,24 @@
-export const packageInfo = Object.freeze({
-  name: "@async/cli",
-  version: "0.1.2",
-  node: ">=24",
-  binaries: ["cli", "async-cli"] as const,
-  specVersion: 1,
-  routerStatus: "implemented",
-  contextPointerStatus: "implemented"
-});
-
-export type AsyncCliPackageInfo = typeof packageInfo;
+export { packageInfo } from "./package-info.js";
+export type { AsyncCliPackageInfo } from "./package-info.js";
 
 export {
   CliError,
+  availableTemplates,
   copyCommand,
   createCommand,
   discoverRoots,
+  executeResolution,
+  findRunnableScript,
   listCommands,
   moveCommand,
+  readCwdPragma,
+  removeCommand,
   resolveCommand,
-  runCommand
+  resolveScopedRoot,
+  resolveScriptCwd
 } from "./router.js";
+
+export { runCommand } from "./run.js";
 
 export type {
   CliErrorCode,
@@ -32,9 +31,38 @@ export type {
   DiscoverRootsOptions,
   ListCommandsOptions,
   MoveCommandOptions,
+  RemoveCommandOptions,
+  RemoveCommandResult,
   ResolveCommandOptions,
-  RunCommandOptions
+  RunCommandOptions,
+  ScriptCwdMode
 } from "./router.js";
+
+export {
+  ensureOverlayTrusted,
+  hashOverlayTree,
+  isTrustEnforced,
+  localOverlayTrust,
+  overlayTrustState,
+  recordOverlayTrust,
+  removeOverlayTrust,
+  trustLocalOverlays,
+  trustStorePath,
+  untrustLocalOverlays
+} from "./trust.js";
+export type { OverlayTrust, OverlayTrustState } from "./trust.js";
+
+export { builtinFlags, complete, completionScript } from "./completions.js";
+export type { CompletionShell } from "./completions.js";
+
+export { renderDoctorReport, runDoctor } from "./doctor.js";
+export type { DoctorProblem, DoctorReport, DoctorSeverity } from "./doctor.js";
+
+export { runMcpServer } from "./mcp.js";
+export type { McpIo } from "./mcp.js";
+
+export { addPack } from "./packs.js";
+export type { AddPackOptions, AddPackResult } from "./packs.js";
 
 export function renderHelp(commands: string[] = []): string {
   const commandLines = commands.length > 0
@@ -51,9 +79,17 @@ export function renderHelp(commands: string[] = []): string {
     "  cli --version",
     "  cli --list [--json]",
     "  cli --which <command...>",
-    "  cli --new <command...> [--root]",
+    "  cli --new <command...> [--root] [--template <name>]",
+    "  cli --edit <command...>",
+    "  cli --rm <command...> [--root] [--force]",
     "  cli --cp <command...> [--to root|local]",
     "  cli --mv <command...> [--to root|local]",
+    "  cli --add <git-url> [--to root|local] [--prefix <name>] [--force]",
+    "  cli --trust [--status]",
+    "  cli --untrust",
+    "  cli --doctor [--json]",
+    "  cli --completions <bash|zsh|fish>",
+    "  cli --mcp",
     "  cli --agents [--write|--check] [--claude]",
     "  cli <command...> [args...]",
     "",

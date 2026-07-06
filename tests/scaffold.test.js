@@ -30,6 +30,15 @@ test("help states the router surface", () => {
   assert.match(help, /cli --list \[--json\]/);
   assert.match(help, /cli --cp <command\.\.\.> \[--to root\|local\]/);
   assert.match(help, /cli --agents \[--write\|--check\] \[--claude\]/);
+  assert.match(help, /cli --new <command\.\.\.> \[--root\] \[--template <name>\]/);
+  assert.match(help, /cli --edit <command\.\.\.>/);
+  assert.match(help, /cli --rm <command\.\.\.> \[--root\] \[--force\]/);
+  assert.match(help, /cli --add <git-url> \[--to root\|local\] \[--prefix <name>\] \[--force\]/);
+  assert.match(help, /cli --trust \[--status\]/);
+  assert.match(help, /cli --untrust/);
+  assert.match(help, /cli --doctor \[--json\]/);
+  assert.match(help, /cli --completions <bash\|zsh\|fish>/);
+  assert.match(help, /cli --mcp/);
 });
 
 test("cli --version prints the package version", () => {
@@ -38,5 +47,5 @@ test("cli --version prints the package version", () => {
   });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), "0.1.2");
+  assert.equal(result.stdout.trim(), "0.2.0");
 });

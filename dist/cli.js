@@ -1,8 +1,13 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { handleAgentsCommand } from "./agents.js";
-import { CliError, copyCommand, createCommand, listCommands, moveCommand, packageInfo, renderHelp, resolveCommand, runCommand } from "./index.js";
+import { complete, completionScript } from "./completions.js";
+import { renderDoctorReport, runDoctor } from "./doctor.js";
+import { CliError, addPack, copyCommand, createCommand, discoverRoots, listCommands, moveCommand, packageInfo, removeCommand, renderHelp, resolveCommand, resolveScopedRoot, runCommand } from "./index.js";
+import { runMcpServer } from "./mcp.js";
+import { localOverlayTrust, overlayTrustState, recordOverlayTrust, refreshOverlayTrustIfKnown, trustLocalOverlays, untrustLocalOverlays } from "./trust.js";
 export async function main(argv = process.argv.slice(2), io = process) {
     const [first] = argv;
     try {
@@ -43,8 +48,32 @@ export async function main(argv = process.argv.slice(2), io = process) {
             return 0;
         }
         if (first === "--new") {
-            const result = await createCommand({ root: argv.includes("--root") ? "root" : "auto" }, cleanFlagArgs(argv.slice(1), ["--root"]));
+            const template = extractValueFlag(argv.slice(1), "--template");
+            const preLocals = await snapshotLocalTrust();
+            const result = await createCommand({
+                root: template.rest.includes("--root") ? "root" : "auto",
+                template: template.value ?? undefined
+            }, cleanFlagArgs(template.rest, ["--root"]));
             io.stdout.write(`created ${result.script}\n`);
+            if (result.root.scope === "local") {
+                await settleTrustAfterMutation(io, preLocals, result.root.path);
+            }
+            return 0;
+        }
+        if (first === "--edit") {
+            const resolution = await resolveCommand({}, argv.slice(1));
+            return runEditor(resolution.script, io);
+        }
+        if (first === "--rm") {
+            const preLocals = await snapshotLocalTrust();
+            const result = await removeCommand({
+                root: argv.includes("--root") ? "root" : "auto",
+                force: argv.includes("--force")
+            }, cleanFlagArgs(argv.slice(1), ["--root", "--force"]));
+            io.stdout.write(`removed ${result.directory}\n`);
+            if (result.root.scope === "local") {
+                await settleTrustAfterMutation(io, preLocals, null);
+            }
             return 0;
         }
         if (first === "--mv") {
@@ -52,11 +81,13 @@ export async function main(argv = process.argv.slice(2), io = process) {
             if (!target) {
                 return 2;
             }
+            const preLocals = await snapshotLocalTrust();
             const result = await moveCommand({ to: target }, commandPath);
             io.stdout.write(`moved ${result.from} -> ${result.to}\n`);
             for (const warning of result.warnings) {
                 io.stderr.write(`warning: ${warning}\n`);
             }
+            await settleTrustAfterMutation(io, preLocals, target === "local" ? (await resolveScopedRoot({}, "local")).path : null);
             return 0;
         }
         if (first === "--cp") {
@@ -64,10 +95,96 @@ export async function main(argv = process.argv.slice(2), io = process) {
             if (!target) {
                 return 2;
             }
+            const preLocals = await snapshotLocalTrust();
             const result = await copyCommand({ to: target }, commandPath);
             io.stdout.write(`copied ${result.from} -> ${result.to}\n`);
             for (const warning of result.warnings) {
                 io.stderr.write(`warning: ${warning}\n`);
+            }
+            await settleTrustAfterMutation(io, preLocals, target === "local" ? (await resolveScopedRoot({}, "local")).path : null);
+            return 0;
+        }
+        if (first === "--trust") {
+            if (argv.includes("--status")) {
+                return await printTrustStatus(io);
+            }
+            const trusted = await trustLocalOverlays();
+            if (trusted.length === 0) {
+                io.stdout.write("No local overlays found.\n");
+                return 0;
+            }
+            for (const overlay of trusted) {
+                io.stdout.write(`trusted ${overlay.path}\n`);
+            }
+            return 0;
+        }
+        if (first === "--untrust") {
+            const removed = await untrustLocalOverlays();
+            if (removed.length === 0) {
+                io.stdout.write("No trusted local overlays found.\n");
+                return 0;
+            }
+            for (const overlay of removed) {
+                io.stdout.write(`untrusted ${overlay.path}\n`);
+            }
+            return 0;
+        }
+        if (first === "--doctor") {
+            const report = await runDoctor();
+            if (argv.includes("--json")) {
+                io.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+            }
+            else {
+                io.stdout.write(renderDoctorReport(report));
+            }
+            return report.summary.errors > 0 ? 1 : 0;
+        }
+        if (first === "--completions") {
+            const shell = argv[1];
+            if (!shell) {
+                throw new CliError("INVALID_ARGS", "--completions requires a shell: bash, zsh, or fish.");
+            }
+            io.stdout.write(completionScript(shell));
+            return 0;
+        }
+        if (first === "--complete") {
+            const words = argv[1] === "--" ? argv.slice(2) : argv.slice(1);
+            try {
+                const candidates = await complete({}, words);
+                if (candidates.length > 0) {
+                    io.stdout.write(`${candidates.join("\n")}\n`);
+                }
+            }
+            catch {
+                return 1;
+            }
+            return 0;
+        }
+        if (first === "--mcp") {
+            return await runMcpServer();
+        }
+        if (first === "--add") {
+            const toFlag = extractValueFlag(argv.slice(1), "--to");
+            const prefixFlag = extractValueFlag(toFlag.rest, "--prefix");
+            const rest = prefixFlag.rest.filter((arg) => arg !== "--force");
+            const to = toFlag.value ?? "root";
+            if (to !== "root" && to !== "local") {
+                io.stderr.write("--add --to must be root or local\n");
+                return 2;
+            }
+            const source = rest[0];
+            if (!source) {
+                throw new CliError("INVALID_ARGS", "cli --add requires a Git URL or path.");
+            }
+            const preLocals = await snapshotLocalTrust();
+            const result = await addPack({
+                to,
+                prefix: prefixFlag.value ?? undefined,
+                force: prefixFlag.rest.includes("--force")
+            }, source);
+            io.stdout.write(`installed ${result.installed.join(", ")} -> ${result.root.path}\n`);
+            if (result.root.scope === "local") {
+                await settleTrustAfterMutation(io, preLocals, result.root.path);
             }
             return 0;
         }
@@ -99,8 +216,76 @@ async function printHelp(prefix, io) {
         ? `${matches.join("\n")}\n`
         : `No commands found below ${prefixText}\n`);
 }
+async function printTrustStatus(io) {
+    const overlays = await localOverlayTrust();
+    const roots = await discoverRoots();
+    const globalRoot = roots.find((root) => root.scope === "root");
+    if (overlays.length === 0) {
+        io.stdout.write("No local overlays found.\n");
+    }
+    for (const overlay of overlays) {
+        io.stdout.write(`${overlay.state} ${overlay.path}\n`);
+    }
+    if (globalRoot) {
+        io.stdout.write(`trusted ${globalRoot.path} (user-global root)\n`);
+    }
+    return 0;
+}
+async function snapshotLocalTrust() {
+    const snapshot = new Map();
+    const roots = await discoverRoots();
+    for (const root of roots.filter((candidate) => candidate.scope === "local")) {
+        snapshot.set(root.path, await overlayTrustState({}, root.path));
+    }
+    return snapshot;
+}
+async function settleTrustAfterMutation(io, preLocals, destinationOverlay) {
+    if (destinationOverlay) {
+        const before = preLocals.get(destinationOverlay);
+        if (before === undefined || before === "trusted") {
+            await recordOverlayTrust({}, destinationOverlay);
+        }
+        else {
+            io.stderr.write(`note: ${destinationOverlay} remains untrusted. Run cli --trust to trust it.\n`);
+        }
+    }
+    for (const [overlay, state] of preLocals) {
+        if (overlay !== destinationOverlay && state === "trusted") {
+            await refreshOverlayTrustIfKnown({}, overlay);
+        }
+    }
+}
+function runEditor(script, io) {
+    const editor = [process.env.VISUAL, process.env.EDITOR]
+        .find((candidate) => candidate !== undefined && candidate.trim().length > 0) ?? "vi";
+    const parts = editor.trim().split(/\s+/).filter((part) => part.length > 0);
+    const command = parts[0];
+    if (!command) {
+        throw new CliError("EDITOR_FAILED", "No editor found. Set $VISUAL or $EDITOR.");
+    }
+    const result = spawnSync(command, [...parts.slice(1), script], { stdio: "inherit" });
+    if (result.error) {
+        throw new CliError("EDITOR_FAILED", `Failed to launch editor "${editor}": ${result.error.message}`);
+    }
+    if (typeof result.status === "number" && result.status !== 0) {
+        io.stderr.write(`editor exited with ${result.status}\n`);
+        return result.status;
+    }
+    return 0;
+}
 function cleanFlagArgs(args, flags) {
     return args.filter((arg) => !flags.includes(arg));
+}
+function extractValueFlag(args, flag) {
+    const index = args.indexOf(flag);
+    if (index === -1) {
+        return { value: null, rest: args };
+    }
+    const value = args[index + 1];
+    if (value === undefined) {
+        throw new CliError("INVALID_ARGS", `${flag} requires a value.`);
+    }
+    return { value, rest: [...args.slice(0, index), ...args.slice(index + 2)] };
 }
 function parseTransferArgs(flag, argv, io) {
     const toIndex = argv.indexOf("--to");

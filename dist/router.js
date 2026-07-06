@@ -1,24 +1,10 @@
 import { spawn } from "node:child_process";
 import { constants as fsConstants, statSync } from "node:fs";
-import { access, cp, mkdir, readdir, readFile, rename, rmdir, stat, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, readdir, readFile, rename, rm, rmdir, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-export class CliError extends Error {
-    code;
-    exitCode;
-    suggestions;
-    subcommands;
-    files;
-    constructor(code, message, details = {}) {
-        super(message);
-        this.name = "CliError";
-        this.code = code;
-        this.exitCode = details.exitCode ?? 2;
-        this.suggestions = details.suggestions ?? [];
-        this.subcommands = details.subcommands ?? [];
-        this.files = details.files ?? [];
-    }
-}
+import { CliError } from "./errors.js";
+export { CliError } from "./errors.js";
 const scriptFiles = ["script.ts", "script.mts", "script.js", "script.mjs"];
 const ignoredNames = new Set(["help", "lib", "node_modules"]);
 export async function discoverRoots(options = {}) {
@@ -103,22 +89,62 @@ export async function listCommands(options = {}) {
         commands: commands.sort((a, b) => a.command.localeCompare(b.command) || a.script.localeCompare(b.script))
     };
 }
-export async function runCommand(options = {}, args) {
-    const resolution = await resolveCommand(options, args);
-    return await spawnScript(resolution, options);
-}
 export async function createCommand(options = {}, commandPath) {
     validateCommandPath(commandPath);
     const roots = await discoverRoots(options);
     const targetRoot = await selectCreateRoot(options, roots);
     const directory = path.join(targetRoot.path, ...commandPath);
-    const script = path.join(directory, "script.ts");
     if (await pathExists(directory)) {
         throw new CliError("TARGET_EXISTS", `Command directory already exists: ${directory}`);
     }
+    if (options.template) {
+        const template = await findTemplate(roots, options.template);
+        await mkdir(path.dirname(directory), { recursive: true });
+        await cp(template, directory, { recursive: true, errorOnExist: true, force: false });
+        const script = await findRunnableScript(directory);
+        if (!script) {
+            await rm(directory, { recursive: true, force: true });
+            throw new CliError("TEMPLATE_INVALID", `Template has no script.{ts,mts,js,mjs}: ${template}`);
+        }
+        return { command: commandPath, directory, script, root: targetRoot };
+    }
+    const script = path.join(directory, "script.ts");
     await mkdir(directory, { recursive: true });
     await writeFile(script, scaffoldScript(commandPath), "utf8");
     return { command: commandPath, directory, script, root: targetRoot };
+}
+export async function removeCommand(options = {}, commandPath) {
+    validateCommandPath(commandPath);
+    const roots = await discoverRoots(options);
+    const searched = options.root === "root"
+        ? roots.filter((root) => root.scope === "root")
+        : roots.filter((root) => root.scope === "local");
+    const targetRoot = searched.find((root) => pathExistsSync(path.join(root.path, ...commandPath)));
+    if (!targetRoot) {
+        throw new CliError("SOURCE_NOT_FOUND", `No ${options.root === "root" ? "root" : "local"} command directory found for ${commandPath.join(" ")}.`);
+    }
+    const directory = path.join(targetRoot.path, ...commandPath);
+    if (!await isDirectory(directory)) {
+        throw new CliError("SOURCE_NOT_FOUND", `Command directory not found: ${directory}`);
+    }
+    const nested = await nestedRunnableScripts(directory);
+    if (nested.length > 0 && !options.force) {
+        throw new CliError("TARGET_EXISTS", `Command directory contains nested commands: ${directory}. Re-run with --force to remove them.`, { files: nested });
+    }
+    await rm(directory, { recursive: true, force: true });
+    await removeEmptyParents(path.dirname(directory), targetRoot.path);
+    return { command: commandPath, directory, root: targetRoot, nested };
+}
+export async function resolveScopedRoot(options, scope) {
+    const roots = await discoverRoots(options);
+    if (scope === "root") {
+        const globalRoot = roots.find((root) => root.scope === "root");
+        if (!globalRoot) {
+            throw new CliError("SOURCE_NOT_FOUND", "No root command tree is configured.");
+        }
+        return globalRoot;
+    }
+    return await selectLocalRootForMove(options, roots);
 }
 export async function moveCommand(options = {}, commandPath) {
     validateCommandPath(commandPath);
@@ -189,7 +215,7 @@ async function collectCandidatesForRoot(root, directory, command) {
     candidates.push(...nested.flat());
     return candidates;
 }
-async function findRunnableScript(directory) {
+export async function findRunnableScript(directory) {
     const found = [];
     for (const scriptFile of scriptFiles) {
         const candidate = path.join(directory, scriptFile);
@@ -242,7 +268,7 @@ async function listSubcommands(directory, prefix) {
         .map((child) => [...prefix, child.name].join(" "))
         .sort();
 }
-async function readDescription(script) {
+export async function readDescription(script) {
     const text = await readFile(script, "utf8");
     const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
     const match = /^\/\/\s*cli:\s*(.*)$/.exec(firstLine);
@@ -373,19 +399,47 @@ function nearestSuggestions(input, candidates) {
         .filter((command) => command.startsWith(firstWord) || firstWord.startsWith(command.split(/\s+/, 1)[0] ?? ""))
         .slice(0, 5);
 }
-async function spawnScript(resolution, options) {
-    const projectRoot = resolution.root.projectRoot ?? "";
+export async function readCwdPragma(script) {
+    const text = await readFile(script, "utf8");
+    for (const line of text.split(/\r?\n/, 16)) {
+        const match = /^\/\/\s*cli-cwd:\s*(\S+)\s*$/.exec(line);
+        if (!match) {
+            continue;
+        }
+        const value = match[1];
+        if (value === "caller" || value === "project-root" || value === "script-dir") {
+            return value;
+        }
+        throw new CliError("INVALID_ARGS", `Unknown cli-cwd value "${value}" in ${script}. Use caller, project-root, or script-dir.`);
+    }
+    return "caller";
+}
+export async function resolveScriptCwd(resolution, callerCwd) {
+    const mode = await readCwdPragma(resolution.script);
+    if (mode === "project-root") {
+        return resolution.root.projectRoot ?? callerCwd;
+    }
+    if (mode === "script-dir") {
+        return path.dirname(resolution.script);
+    }
+    return callerCwd;
+}
+export function buildScriptEnv(resolution, callerCwd, baseEnv = process.env) {
+    return {
+        ...baseEnv,
+        CLI_SCRIPT: resolution.script,
+        CLI_ROOT: resolution.root.path,
+        CLI_SCOPE: resolution.root.scope,
+        CLI_PROJECT_ROOT: resolution.root.projectRoot ?? "",
+        CLI_COMMAND: resolution.command.join(" "),
+        CLI_CALLER_CWD: callerCwd
+    };
+}
+export async function executeResolution(resolution, options = {}) {
+    const callerCwd = path.resolve(options.cwd ?? process.cwd());
     const child = spawn(process.execPath, [resolution.script, ...resolution.argv], {
-        cwd: path.resolve(options.cwd ?? process.cwd()),
-        env: {
-            ...process.env,
-            ...(options.env ?? {}),
-            CLI_SCRIPT: resolution.script,
-            CLI_ROOT: resolution.root.path,
-            CLI_SCOPE: resolution.root.scope,
-            CLI_PROJECT_ROOT: projectRoot,
-            CLI_COMMAND: resolution.command.join(" ")
-        },
+        cwd: await resolveScriptCwd(resolution, callerCwd),
+        env: buildScriptEnv(resolution, callerCwd, { ...process.env, ...(options.env ?? {}) }),
         stdio: options.stdio ?? "inherit"
     });
     const forwardSignal = (signal) => {
@@ -422,6 +476,61 @@ function scaffoldScript(commandPath) {
         ""
     ].join("\n");
 }
+async function nestedRunnableScripts(directory) {
+    const children = await readdir(directory, { withFileTypes: true });
+    const nested = [];
+    for (const child of children) {
+        if (!child.isDirectory() || isIgnoredSegment(child.name)) {
+            continue;
+        }
+        const childDirectory = path.join(directory, child.name);
+        const script = await findRunnableScript(childDirectory);
+        if (script) {
+            nested.push(script);
+        }
+        nested.push(...await nestedRunnableScripts(childDirectory));
+    }
+    return nested;
+}
+async function findTemplate(roots, name) {
+    if (name.length === 0 ||
+        name === "." ||
+        name === ".." ||
+        path.isAbsolute(name) ||
+        name.includes("/") ||
+        name.includes("\\")) {
+        throw new CliError("UNSAFE_SEGMENT", `Unsafe template name: ${name}`);
+    }
+    for (const root of roots) {
+        const candidate = path.join(root.path, "_templates", name);
+        if (await isDirectory(candidate)) {
+            return candidate;
+        }
+    }
+    throw new CliError("TEMPLATE_NOT_FOUND", `Template not found: ${name}`, {
+        suggestions: await availableTemplates(roots)
+    });
+}
+export async function availableTemplates(roots) {
+    const names = new Set();
+    for (const root of roots) {
+        const templatesDirectory = path.join(root.path, "_templates");
+        if (!await isDirectory(templatesDirectory)) {
+            continue;
+        }
+        const children = await readdir(templatesDirectory, { withFileTypes: true });
+        for (const child of children) {
+            if (child.isDirectory()) {
+                names.add(child.name);
+            }
+        }
+    }
+    return [...names].sort();
+}
+export const scriptFileNames = scriptFiles;
+export function isIgnoredCommandSegment(segment) {
+    return isIgnoredSegment(segment);
+}
 async function escapingImportWarnings(commandDirectory, operation) {
     const warnings = [];
     for (const scriptFile of scriptFiles) {
@@ -429,12 +538,15 @@ async function escapingImportWarnings(commandDirectory, operation) {
         if (!await isFile(script)) {
             continue;
         }
-        const text = await readFile(script, "utf8");
-        if (/\bfrom\s+["']\.\.\//.test(text) || /\bimport\s*\(\s*["']\.\.\//.test(text)) {
+        if (await scriptImportsEscape(script)) {
             warnings.push(`${scriptFile} imports through ../ and may not survive the ${operation} unchanged.`);
         }
     }
     return warnings;
+}
+export async function scriptImportsEscape(script) {
+    const text = await readFile(script, "utf8");
+    return /\bfrom\s+["']\.\.\//.test(text) || /\bimport\s*\(\s*["']\.\.\//.test(text);
 }
 async function removeEmptyParents(start, stop) {
     let current = start;

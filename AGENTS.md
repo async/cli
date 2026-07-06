@@ -11,7 +11,11 @@ that runs directory-backed project and user-global commands.
 - Preserve command directories as the move unit.
 - Keep `script` valid as a command segment; only `script.{ts,mts,js,mjs}` files
   make a command directory runnable.
-- Do not add shell entrypoints, completions, trust prompts, or MCP mode in v1.
+- v0.2 ships completions, the overlay trust model, `--edit`/`--rm`, templates,
+  the `cli-cwd` pragma, `--doctor`, MCP server mode, and command packs; keep
+  their contracts aligned with `SPEC.md`.
+- Do not add non-JavaScript entrypoints (`.sh`, `.py`) or a hosted pack
+  registry.
 - Do not move or delete `../cli (1)/SPEC.md`; it is source material outside this
   package.
 

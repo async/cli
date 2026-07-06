@@ -195,7 +195,8 @@ async function withFixture(fn) {
   const globalRoot = path.join(root, "global-cli");
   const env = {
     ...process.env,
-    ASYNC_CLI_GLOBAL_ROOT: globalRoot
+    ASYNC_CLI_GLOBAL_ROOT: globalRoot,
+    ASYNC_CLI_TRUST: "off"
   };
 
   await mkdir(path.join(project, ".git"), { recursive: true });

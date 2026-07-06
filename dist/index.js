@@ -1,13 +1,11 @@
-export const packageInfo = Object.freeze({
-    name: "@async/cli",
-    version: "0.1.2",
-    node: ">=24",
-    binaries: ["cli", "async-cli"],
-    specVersion: 1,
-    routerStatus: "implemented",
-    contextPointerStatus: "implemented"
-});
-export { CliError, copyCommand, createCommand, discoverRoots, listCommands, moveCommand, resolveCommand, runCommand } from "./router.js";
+export { packageInfo } from "./package-info.js";
+export { CliError, availableTemplates, copyCommand, createCommand, discoverRoots, executeResolution, findRunnableScript, listCommands, moveCommand, readCwdPragma, removeCommand, resolveCommand, resolveScopedRoot, resolveScriptCwd } from "./router.js";
+export { runCommand } from "./run.js";
+export { ensureOverlayTrusted, hashOverlayTree, isTrustEnforced, localOverlayTrust, overlayTrustState, recordOverlayTrust, removeOverlayTrust, trustLocalOverlays, trustStorePath, untrustLocalOverlays } from "./trust.js";
+export { builtinFlags, complete, completionScript } from "./completions.js";
+export { renderDoctorReport, runDoctor } from "./doctor.js";
+export { runMcpServer } from "./mcp.js";
+export { addPack } from "./packs.js";
 export function renderHelp(commands = []) {
     const commandLines = commands.length > 0
         ? ["", "Available commands:", ...commands.map((command) => `  ${command}`)]
@@ -22,9 +20,17 @@ export function renderHelp(commands = []) {
         "  cli --version",
         "  cli --list [--json]",
         "  cli --which <command...>",
-        "  cli --new <command...> [--root]",
+        "  cli --new <command...> [--root] [--template <name>]",
+        "  cli --edit <command...>",
+        "  cli --rm <command...> [--root] [--force]",
         "  cli --cp <command...> [--to root|local]",
         "  cli --mv <command...> [--to root|local]",
+        "  cli --add <git-url> [--to root|local] [--prefix <name>] [--force]",
+        "  cli --trust [--status]",
+        "  cli --untrust",
+        "  cli --doctor [--json]",
+        "  cli --completions <bash|zsh|fish>",
+        "  cli --mcp",
         "  cli --agents [--write|--check] [--claude]",
         "  cli <command...> [args...]",
         "",

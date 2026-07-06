@@ -1,14 +1,17 @@
-export declare const packageInfo: Readonly<{
-    name: "@async/cli";
-    version: "0.1.2";
-    node: ">=24";
-    binaries: readonly ["cli", "async-cli"];
-    specVersion: 1;
-    routerStatus: "implemented";
-    contextPointerStatus: "implemented";
-}>;
-export type AsyncCliPackageInfo = typeof packageInfo;
-export { CliError, copyCommand, createCommand, discoverRoots, listCommands, moveCommand, resolveCommand, runCommand } from "./router.js";
-export type { CliErrorCode, CommandEntry, CommandResolution, CommandRoot, CopyCommandOptions, CopyCommandResult, CreateCommandOptions, DiscoverRootsOptions, ListCommandsOptions, MoveCommandOptions, ResolveCommandOptions, RunCommandOptions } from "./router.js";
+export { packageInfo } from "./package-info.js";
+export type { AsyncCliPackageInfo } from "./package-info.js";
+export { CliError, availableTemplates, copyCommand, createCommand, discoverRoots, executeResolution, findRunnableScript, listCommands, moveCommand, readCwdPragma, removeCommand, resolveCommand, resolveScopedRoot, resolveScriptCwd } from "./router.js";
+export { runCommand } from "./run.js";
+export type { CliErrorCode, CommandEntry, CommandResolution, CommandRoot, CopyCommandOptions, CopyCommandResult, CreateCommandOptions, DiscoverRootsOptions, ListCommandsOptions, MoveCommandOptions, RemoveCommandOptions, RemoveCommandResult, ResolveCommandOptions, RunCommandOptions, ScriptCwdMode } from "./router.js";
+export { ensureOverlayTrusted, hashOverlayTree, isTrustEnforced, localOverlayTrust, overlayTrustState, recordOverlayTrust, removeOverlayTrust, trustLocalOverlays, trustStorePath, untrustLocalOverlays } from "./trust.js";
+export type { OverlayTrust, OverlayTrustState } from "./trust.js";
+export { builtinFlags, complete, completionScript } from "./completions.js";
+export type { CompletionShell } from "./completions.js";
+export { renderDoctorReport, runDoctor } from "./doctor.js";
+export type { DoctorProblem, DoctorReport, DoctorSeverity } from "./doctor.js";
+export { runMcpServer } from "./mcp.js";
+export type { McpIo } from "./mcp.js";
+export { addPack } from "./packs.js";
+export type { AddPackOptions, AddPackResult } from "./packs.js";
 export declare function renderHelp(commands?: string[]): string;
 //# sourceMappingURL=index.d.ts.map

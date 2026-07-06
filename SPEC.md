@@ -3,6 +3,8 @@
 Status: accepted
 Package: cli
 Date: 2026-07-02
+Amended: 2026-07-06 (v0.2 surface: trust model, completions, --edit/--rm,
+templates, cli-cwd pragma, --doctor, MCP server mode, command packs)
 
 ## Context
 
@@ -119,7 +121,7 @@ Scripts are standalone Node ESM programs.
 - TypeScript syntax that Node cannot strip, such as `enum` or `namespace`,
   fails with Node's own error.
 - Scripts read arguments from `process.argv.slice(2)`.
-- Scripts run from the caller's original working directory.
+- Scripts run from the caller's original working directory by default.
 - Stdio is inherited.
 - Exit codes and signals are propagated.
 - Scripts own their own validation, prompts, and task-specific help.
@@ -132,7 +134,27 @@ CLI_ROOT
 CLI_SCOPE
 CLI_PROJECT_ROOT
 CLI_COMMAND
+CLI_CALLER_CWD
 ```
+
+### Working Directory Pragma
+
+A head-of-file comment within the first 16 lines selects the script's working
+directory:
+
+```js
+// cli-cwd: project-root
+```
+
+Values:
+
+- `caller` (default): the caller's original working directory.
+- `project-root`: the discovered Git root; falls back to the caller's working
+  directory outside a repo.
+- `script-dir`: the command directory containing the script.
+
+Unknown values fail with an actionable error. `CLI_CALLER_CWD` always carries
+the caller's original working directory regardless of the pragma.
 
 ### Descriptions
 
@@ -159,12 +181,28 @@ cli --list --json
 cli --which gh pull
 cli --new gh pr
 cli --new gh pr --root
+cli --new gh pr --template worker
+cli --edit gh pull
+cli --rm gh pull
+cli --rm gh pull --root
+cli --rm gh --force
 cli --cp gh pull
 cli --cp gh pull --to root
 cli --cp gh pull --to local
 cli --mv gh pull
 cli --mv gh pull --to root
 cli --mv gh pull --to local
+cli --add https://example.com/org/pack.git
+cli --add https://example.com/org/pack.git --to local
+cli --add https://example.com/org/pack.git --prefix vendor
+cli --trust
+cli --trust --status
+cli --untrust
+cli --doctor
+cli --doctor --json
+cli --completions bash
+cli --complete -- gh pu
+cli --mcp
 cli --agents
 cli --agents --write
 cli --agents --check
@@ -190,6 +228,18 @@ cli --version
   directory into the root command tree.
 - `cli --mv <cmd...> --to local` moves a root command directory into the
   current Git root's `.cli`.
+- `cli --edit <cmd...>` opens the resolved script in `$VISUAL` or `$EDITOR`
+  (falling back to `vi`).
+- `cli --rm <cmd...>` removes the whole command directory from the nearest
+  matching local overlay (or the root tree with `--root`) and prunes empty
+  parents. Directories containing nested commands require `--force`.
+- `cli --add <git-url>` installs a command pack (see Command Packs).
+- `cli --trust`, `cli --untrust`, and `cli --trust --status` manage local
+  overlay trust (see Trust Model).
+- `cli --doctor` audits the command trees (see Doctor).
+- `cli --completions <shell>` and the hidden `cli --complete` helper provide
+  shell completions (see Completions).
+- `cli --mcp` serves the command tree over MCP stdio (see MCP Server Mode).
 - `cli --agents` manages repo context file discoverability.
 
 `--new` target selection:
@@ -197,6 +247,18 @@ cli --version
 - Use the nearest existing local `.cli` if one exists.
 - Otherwise create under the Git root `.cli`.
 - Outside a Git repo, require `--root`.
+
+### Templates
+
+`cli --new <cmd...> --template <name>` copies a template directory instead of
+writing the default scaffold:
+
+- Templates live in `_templates/<name>/` under any command root, searched
+  nearest-local first, then the user-global tree.
+- The leading underscore keeps `_templates` out of routing, listing, and help.
+- A template directory is copied verbatim and must produce exactly one
+  top-level `script.{ts,mts,js,mjs}` in the new command directory.
+- A missing template fails and lists the available template names.
 
 Move rules:
 
@@ -258,6 +320,69 @@ Prefer a matching `.cli` command over improvising the same task.
 The block is a static pointer by design. The live tree comes from `--list`, so
 committed docs do not need to embed command listings.
 
+### Completions
+
+`cli --completions <bash|zsh|fish>` prints a completion script for the given
+shell. The scripts delegate to the hidden helper:
+
+```sh
+cli --complete -- <words...>
+```
+
+which prints one candidate per line: next command segments below the typed
+prefix, filtered to non-shadowed commands, or built-in flags when the first
+word starts with `-`. Completion never executes scripts and never fails
+loudly; errors produce no candidates.
+
+### Doctor
+
+`cli --doctor [--json]` audits every discovered command root and reports:
+
+- errors: ambiguous command directories with multiple `script.*` files, and an
+  unreadable trust store.
+- warnings: scripts importing through `../`, empty command directories,
+  untrusted or changed local overlays, and outdated managed context blocks.
+- infos: missing `// cli:` descriptions, shadowed commands, and repos with no
+  context pointer at all.
+
+Exit code is 1 when any error is present, otherwise 0. `--json` emits
+`{ version, problems, summary }` for tooling.
+
+### MCP Server Mode
+
+`cli --mcp` runs a Model Context Protocol server over stdio using
+newline-delimited JSON-RPC 2.0, with zero runtime dependencies. It handles
+`initialize`, `ping`, `tools/list`, and `tools/call`.
+
+- Every non-shadowed command becomes a tool. Command words are joined with
+  `__` and sanitized to MCP-safe names (`gh pull` becomes `gh__pull`).
+- Tool descriptions come from the `// cli:` line.
+- Each tool accepts `{ "args": ["..."] }` and forwards them to the script.
+- `tools/call` captures stdout and stderr (capped at 1 MiB each) and reports
+  nonzero exits as `isError: true`.
+- Commands from untrusted local overlays are excluded from `tools/list` and
+  refused at call time while trust enforcement is active.
+
+### Command Packs
+
+`cli --add <git-url> [--to root|local] [--prefix <name>] [--force]` installs
+commands from another repository:
+
+- The source is anything `git clone` accepts. Cloning is shallow and lands in
+  a temporary directory that is always cleaned up.
+- The pack's command tree is its `.cli/` directory; a repo without `.cli/` is
+  not a pack.
+- Without `--prefix`, each top-level command directory installs under the
+  target tree. A pack with a runnable command at its `.cli/` root requires
+  `--prefix`.
+- With `--prefix <name>`, the whole pack tree installs under that single
+  namespace directory.
+- Existing target directories are refused unless `--force`, which replaces
+  them whole.
+- The default target is the user-global tree. `--to local` installs into the
+  current Git root's `.cli` and records trust for that overlay, since the
+  install is an explicit consent action.
+
 ### Machine-Readable Listing
 
 `cli --list --json` is the stable programmatic surface:
@@ -293,12 +418,22 @@ committed docs do not need to embed command listings.
   - `createCommand(options, commandPath)`
   - `copyCommand(options, commandPath)`
   - `moveCommand(options, commandPath)`
+  - `removeCommand(options, commandPath)`
+  - `addPack(options, source)`
+  - `runDoctor(options)`
+  - `complete(options, words)` and `completionScript(shell)`
+  - `runMcpServer(options, io)`
+  - trust helpers: `trustLocalOverlays`, `untrustLocalOverlays`,
+    `localOverlayTrust`, `overlayTrustState`, `recordOverlayTrust`,
+    `removeOverlayTrust`, `ensureOverlayTrusted`, `hashOverlayTree`,
+    `isTrustEnforced`, `trustStorePath`
 
 Environment overrides:
 
 ```text
 ASYNC_CLI_GLOBAL_ROOT
 ASYNC_CLI_PROJECT_ROOT
+ASYNC_CLI_TRUST        (set to "off" to disable trust enforcement)
 ```
 
 ### Errors
@@ -306,32 +441,54 @@ ASYNC_CLI_PROJECT_ROOT
 - Unknown command: concise error, nearest suggestions, and `cli help` hint.
 - Partial namespace: list available subcommands below the matched prefix.
 - Ambiguous `script.*` directory: list the conflicting files.
-- Unsafe path segment in routing, `--new`, `--cp`, or `--mv`: reject empty
-  segments, `.`, `..`, absolute paths, path separators, ignored names, hidden
-  segments, and leading-underscore segments.
-- No Git root for `--new` without `--root`, `--cp --to local`, or
-  `--mv --to local`: print an actionable message.
+- Unsafe path segment in routing, `--new`, `--rm`, `--cp`, `--mv`, or
+  `--add --prefix`: reject empty segments, `.`, `..`, absolute paths, path
+  separators, ignored names, hidden segments, and leading-underscore segments.
+- No Git root for `--new` without `--root`, `--rm` without `--root`,
+  `--cp --to local`, `--mv --to local`, or `--add --to local`: print an
+  actionable message.
+- Untrusted or changed local overlay at execution time: exit 3 with a
+  `cli --trust` hint.
+- Missing template: exit nonzero listing available template names.
+- Invalid pack or failed `git clone`: exit nonzero with the git error tail.
 - `--agents --check` drift: exit nonzero with a `cli --agents --write` hint.
 - Script failure: preserve the script's own exit code.
 
 ### Trust Model
 
-`.cli` scripts are arbitrary code, equivalent to package scripts or Makefiles.
-Nothing runs without an explicit `cli <cmd>` invocation. Trust prompts are a
-future candidate and are default-off if added later.
+`.cli` scripts are arbitrary code, equivalent to package scripts or Makefiles,
+and local overlays arrive with cloned repositories. Because a nearer local
+overlay can shadow user-global commands, running commands from an untrusted
+overlay is refused by default — the direnv model.
+
+- The user-global tree is always trusted.
+- Local overlays must be trusted explicitly with `cli --trust`, which records
+  a content hash of the whole overlay tree (scripts, `lib/`, everything) in
+  `.trust.json` under the user-global root.
+- Any content change invalidates trust: execution fails with exit 3 until the
+  user reviews and re-runs `cli --trust`.
+- `cli --trust --status` reports `trusted`, `changed`, or `untrusted` per
+  overlay. `cli --untrust` revokes trust.
+- Read-only surfaces (`--list`, `--which`, `help`, completions) never require
+  trust; execution surfaces (`cli <cmd>`, MCP `tools/call`) always check it.
+- Mutations performed through the CLI are consent: `--new`, `--cp --to local`,
+  `--mv --to local`, and `--add --to local` record or refresh trust for the
+  target overlay when it is fresh or was already trusted. They never silently
+  bless a pre-existing untrusted overlay.
+- `ASYNC_CLI_TRUST=off` disables enforcement for tests and controlled
+  environments.
 
 ## Non-Goals
 
 - Argument parsing for user scripts.
 - Generated per-command help from script metadata.
-- Shell completions.
-- MCP server mode.
-- Trust prompts in v1.
+- Interactive trust prompts; trust is explicit via `cli --trust`.
 - Non-JavaScript entrypoints such as `.sh` or `.py`.
 - Runtime dependency management for scripts.
 - Cross-platform shell launcher behavior beyond Node process spawning.
 - Arbitrary context files for `--agents`; only `AGENTS.md` and explicit
   `--claude` are in scope.
+- A hosted pack registry; packs are plain Git repositories.
 
 ## Allowed Files
 

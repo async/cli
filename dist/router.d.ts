@@ -1,17 +1,5 @@
-export type CliErrorCode = "AMBIGUOUS_SCRIPT" | "MISSING_GIT_ROOT" | "PARTIAL_NAMESPACE" | "UNKNOWN_COMMAND" | "UNSAFE_SEGMENT" | "TARGET_EXISTS" | "SOURCE_NOT_FOUND";
-export declare class CliError extends Error {
-    readonly code: CliErrorCode;
-    readonly exitCode: number;
-    readonly suggestions: string[];
-    readonly subcommands: string[];
-    readonly files: string[];
-    constructor(code: CliErrorCode, message: string, details?: {
-        exitCode?: number;
-        suggestions?: string[];
-        subcommands?: string[];
-        files?: string[];
-    });
-}
+export { CliError } from "./errors.js";
+export type { CliErrorCode } from "./errors.js";
 export interface DiscoverRootsOptions {
     cwd?: string;
     env?: NodeJS.ProcessEnv;
@@ -26,6 +14,11 @@ export interface RunCommandOptions extends ResolveCommandOptions {
 }
 export interface CreateCommandOptions extends DiscoverRootsOptions {
     root?: "auto" | "root" | "local";
+    template?: string;
+}
+export interface RemoveCommandOptions extends DiscoverRootsOptions {
+    root?: "auto" | "root";
+    force?: boolean;
 }
 export interface MoveCommandOptions extends DiscoverRootsOptions {
     to?: "root" | "local";
@@ -70,6 +63,13 @@ export interface MoveCommandResult {
     to: string;
     warnings: string[];
 }
+export interface RemoveCommandResult {
+    command: string[];
+    directory: string;
+    root: CommandRoot;
+    nested: string[];
+}
+export type ScriptCwdMode = "caller" | "project-root" | "script-dir";
 export interface CopyCommandResult {
     command: string[];
     from: string;
@@ -79,8 +79,19 @@ export interface CopyCommandResult {
 export declare function discoverRoots(options?: DiscoverRootsOptions): Promise<CommandRoot[]>;
 export declare function resolveCommand(options: ResolveCommandOptions | undefined, args: string[]): Promise<CommandResolution>;
 export declare function listCommands(options?: ListCommandsOptions): Promise<CommandList>;
-export declare function runCommand(options: RunCommandOptions | undefined, args: string[]): Promise<number>;
 export declare function createCommand(options: CreateCommandOptions | undefined, commandPath: string[]): Promise<CreateCommandResult>;
+export declare function removeCommand(options: RemoveCommandOptions | undefined, commandPath: string[]): Promise<RemoveCommandResult>;
+export declare function resolveScopedRoot(options: DiscoverRootsOptions, scope: "root" | "local"): Promise<CommandRoot>;
 export declare function moveCommand(options: MoveCommandOptions | undefined, commandPath: string[]): Promise<MoveCommandResult>;
 export declare function copyCommand(options: CopyCommandOptions | undefined, commandPath: string[]): Promise<CopyCommandResult>;
+export declare function findRunnableScript(directory: string): Promise<string | null>;
+export declare function readDescription(script: string): Promise<string>;
+export declare function readCwdPragma(script: string): Promise<ScriptCwdMode>;
+export declare function resolveScriptCwd(resolution: CommandResolution, callerCwd: string): Promise<string>;
+export declare function buildScriptEnv(resolution: CommandResolution, callerCwd: string, baseEnv?: NodeJS.ProcessEnv): NodeJS.ProcessEnv;
+export declare function executeResolution(resolution: CommandResolution, options?: RunCommandOptions): Promise<number>;
+export declare function availableTemplates(roots: CommandRoot[]): Promise<string[]>;
+export declare const scriptFileNames: readonly string[];
+export declare function isIgnoredCommandSegment(segment: string): boolean;
+export declare function scriptImportsEscape(script: string): Promise<boolean>;
 //# sourceMappingURL=router.d.ts.map

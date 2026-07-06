@@ -14,10 +14,12 @@ maps to a command directory like:
 .cli/gh/pull/script.ts
 ```
 
-The v1 contract is defined in `SPEC.md`. The package implements local and
-user-global command discovery, command resolution, script execution,
-machine-readable listing, `--which`, `--new`, `--mv`, context-file pointers,
-help, command copy, and version output.
+The contract is defined in `SPEC.md`. The package implements local and
+user-global command discovery, command resolution, script execution with a
+trust model for local overlays, machine-readable listing, `--which`, command
+scaffolding with templates, command copy/move/remove, `--edit`, command packs
+via `--add`, shell completions, a tree doctor, an MCP server mode,
+context-file pointers, help, and version output.
 
 ## Install
 
@@ -52,10 +54,20 @@ cli --list --json
 cli --which gh pull
 cli --new gh pr
 cli --new gh pr --root
+cli --new gh pr --template worker
+cli --edit gh pull
+cli --rm gh pull
 cli --cp gh pull
 cli --cp gh pull --to local
 cli --mv gh pull
 cli --mv gh pull --to local
+cli --add https://example.com/org/pack.git
+cli --trust
+cli --trust --status
+cli --untrust
+cli --doctor
+cli --completions bash
+cli --mcp
 cli --agents
 cli --agents --write
 cli --agents --check
@@ -63,13 +75,59 @@ cli --agents --claude --write
 cli --version
 ```
 
-Command scripts run from the caller's original working directory. `.js` and
-`.mjs` scripts run directly with Node; `.ts` and `.mts` scripts use Node 24
-native type stripping.
+Command scripts run from the caller's original working directory by default;
+a `// cli-cwd: project-root` or `// cli-cwd: script-dir` head comment changes
+that per script. `.js` and `.mjs` scripts run directly with Node; `.ts` and
+`.mts` scripts use Node 24 native type stripping.
 
 Use `--cp` to clone a command directory between local and user-global command
 trees without removing the source. Use `--mv` when the source should be
-transferred instead.
+transferred instead, and `--rm` to delete a command directory.
+
+## Trust
+
+Repo-local `.cli/` overlays are refused at execution time until you trust
+them, because cloned repositories can shadow your user-global commands:
+
+```sh
+cli --trust           # trust the local overlays discovered from here
+cli --trust --status  # trusted | changed | untrusted per overlay
+cli --untrust         # revoke
+```
+
+Trust records a content hash of the overlay; any change requires re-trusting.
+Listing and `--which` never require trust. Set `ASYNC_CLI_TRUST=off` to
+disable enforcement in controlled environments.
+
+## Completions
+
+```sh
+eval "$(cli --completions bash)"   # or zsh
+cli --completions fish | source    # fish
+```
+
+## Doctor
+
+`cli --doctor [--json]` audits every command root: ambiguous script
+directories, `../` imports that break `--cp`/`--mv`, empty command
+directories, untrusted overlays, missing descriptions, shadowed commands, and
+stale `--agents` pointer blocks.
+
+## MCP
+
+`cli --mcp` serves the command tree as MCP tools over stdio (JSON-RPC 2.0,
+zero dependencies), so agent runtimes can discover and call the same commands
+humans use. Untrusted local overlays are excluded.
+
+## Packs
+
+Install commands from any Git repository that carries a `.cli/` tree:
+
+```sh
+cli --add https://example.com/org/pack.git             # into ~/.cli
+cli --add https://example.com/org/pack.git --prefix vendor
+cli --add https://example.com/org/pack.git --to local  # into this repo
+```
 
 ## Development
 
