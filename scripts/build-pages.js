@@ -7,8 +7,16 @@ const site = {
   repo: "cli",
   stage: "Alpha",
   description: "Filesystem-routed project and user-global commands for Async workspaces.",
-  lead: "Create, copy, move, list, inspect, and run directory-backed commands from local project overlays or a shared user-global tree.",
-  quickstart: "pnpm add -D @async/cli\n\ncli --list\ncli --new gh pull\ncli --cp gh pull --to local\ncli --mv gh pull --to local"
+  lead: "Create, inspect, run, and share directory-backed commands from trusted project overlays or a user-global tree — with shell completions, a tree doctor, command packs, and an MCP server for tooling.",
+  quickstart: "pnpm add -D @async/cli\n\ncli --new gh pull      # scaffold .cli/gh/pull/script.ts\ncli gh pull 123        # run it: argv [\"123\"]\ncli --list             # what exists, what shadows what\ncli --trust            # approve a cloned repo's overlay\ncli --mv gh pull --to root   # promote to ~/.cli"
+};
+
+const mdLinkTargets = {
+  "ROUTING.md": "routing.html",
+  "API_SURFACE.md": "api-surface.html",
+  "README.md": "index.html",
+  "SPEC.md": "https://github.com/async/cli/blob/main/SPEC.md",
+  "CHANGELOG.md": "https://github.com/async/cli/blob/main/CHANGELOG.md"
 };
 
 const outDir = ".async/pages";
@@ -23,11 +31,12 @@ const asyncProjects = [
   ["@async/claims", "https://async.github.io/claims/", "Doc claim checks"]
 ];
 
-await rm(outDir, { recursive: true, force: true });
+await rm(outDir, { recursive: true, force: true }).catch(() => {});
 await mkdir(outDir, { recursive: true });
 
 const readme = await readFile("README.md", "utf8");
 const apiSurface = await readFile("API_SURFACE.md", "utf8");
+const routing = await readFile("ROUTING.md", "utf8");
 
 await writeFile(join(outDir, "index.html"), layout({
   title: site.title,
@@ -36,10 +45,25 @@ await writeFile(join(outDir, "index.html"), layout({
 }));
 
 await writeFile(join(outDir, "api-surface.html"), layout({
-  title: `${site.title} API Surface`,
-  description: `${site.title} public API surface.`,
-  body: `<section><h1>API Surface</h1><div class="markdown">${renderMarkdown(apiSurface)}</div></section>`
+  title: `${site.title} API Reference`,
+  description: `${site.title} complete public API reference.`,
+  body: docPage("API Reference", apiSurface)
 }));
+
+await writeFile(join(outDir, "routing.html"), layout({
+  title: `${site.title} Routing`,
+  description: `${site.title} routing and resolution rules.`,
+  body: docPage("Routing", routing)
+}));
+
+function docPage(title, markdown) {
+  const body = markdown.replace(/^#\s+.*\r?\n/, "");
+  return `<section>${docNav()}<h1>${escapeHtml(title)}</h1><div class="markdown">${renderMarkdown(body)}</div></section>`;
+}
+
+function docNav() {
+  return `<nav class="docnav"><a href="index.html">Overview</a><a href="routing.html">Routing</a><a href="api-surface.html">API Reference</a></nav>`;
+}
 
 function home(readme) {
   const related = asyncProjects
@@ -56,7 +80,8 @@ function home(readme) {
       <div class="actions">
         <a class="primary-link" href="https://github.com/async/${site.repo}">GitHub</a>
         <a href="https://www.npmjs.com/package/${encodeURIComponent(site.title)}">npm</a>
-        <a href="api-surface.html">API Surface</a>
+        <a href="routing.html">Routing</a>
+        <a href="api-surface.html">API Reference</a>
       </div>
     </section>
     <section>
@@ -121,6 +146,9 @@ function layout({ title, description, body }) {
     .related{display:block;padding:16px 18px;background:rgba(15,23,32,.48);border:1px solid var(--line-soft);border-radius:8px}
     .related strong{display:block;color:var(--text);font-weight:800}
     .related span{display:block;margin-top:4px;color:var(--muted)}
+    .docnav{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 20px;font-size:.92rem;font-weight:750}
+    .docnav a{display:inline-flex;align-items:center;min-height:34px;padding:0 12px;color:var(--muted);background:rgba(15,23,32,.54);border:1px solid var(--line-soft);border-radius:8px}
+    .docnav a:hover{color:var(--text);text-decoration:none}
     pre{overflow-x:auto;margin:1rem 0 1.5rem;padding:18px 20px;color:var(--body);background:linear-gradient(180deg,#101923 0%,#0d141d 100%);border:1px solid var(--line-soft);border-radius:8px}
     code{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;font-size:.92em}
     p code,li code{padding:.1rem .35rem;color:var(--text);background:rgba(15,23,32,.65);border:1px solid var(--line-soft);border-radius:6px}
@@ -222,6 +250,11 @@ function renderMarkdown(source) {
       html.push(`<li>${renderInline(line.replace(/^\d+\.\s+/, ""))}</li>`);
       continue;
     }
+    if (list && /^\s{2,}\S/.test(line)) {
+      const previous = html.pop();
+      html.push(previous.replace(/<\/li>$/, ` ${renderInline(line.trim())}</li>`));
+      continue;
+    }
     if (/^>\s?/.test(line)) {
       closeList();
       html.push(`<blockquote>${renderInline(line.replace(/^>\s?/, ""))}</blockquote>`);
@@ -241,7 +274,13 @@ function renderMarkdown(source) {
 }
 
 function renderTable(lines) {
-  const rows = lines.map((line) => line.trim().slice(1, -1).split("|").map((cell) => cell.trim()));
+  const escapedPipe = "\u0000";
+  const rows = lines.map((line) => line
+    .replaceAll("\\|", escapedPipe)
+    .trim()
+    .slice(1, -1)
+    .split("|")
+    .map((cell) => cell.trim().replaceAll(escapedPipe, "|")));
   const body = rows
     .filter((row) => !row.every((cell) => /^:?-{3,}:?$/.test(cell)))
     .map((row, index) => {
@@ -265,7 +304,8 @@ function renderTextLinks(value) {
   return String(value).split(/(\[[^\]]+\]\([^)]+\))/g).map((segment) => {
     const match = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(segment);
     if (match) {
-      return `<a href="${escapeHtml(match[2])}">${escapeHtml(match[1])}</a>`;
+      const href = mdLinkTargets[match[2]] ?? match[2];
+      return `<a href="${escapeHtml(href)}">${escapeHtml(match[1])}</a>`;
     }
     let html = escapeHtml(segment);
     for (const [name, url] of asyncProjects) {

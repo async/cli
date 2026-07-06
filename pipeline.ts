@@ -5,6 +5,7 @@ const packageInputs = [
   "tests/**/*.test.js",
   "scripts/**/*.js",
   "README.md",
+  "ROUTING.md",
   "SPEC.md",
   "CHANGELOG.md",
   "AGENTS.md",
@@ -103,7 +104,7 @@ export default definePipeline({
     }),
     "docs.site": task({
       description: "Build the GitHub Pages documentation site.",
-      inputs: ["README.md", "API_SURFACE.md", "scripts/build-pages.js"],
+      inputs: ["README.md", "ROUTING.md", "API_SURFACE.md", "scripts/build-pages.js"],
       outputs: [".async/pages/**"],
       cache: false,
       run: sh`node scripts/build-pages.js`

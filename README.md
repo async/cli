@@ -2,132 +2,214 @@
 
 Filesystem-routed commands for local projects and user-global tools.
 
-`@async/cli` treats command directories as the CLI surface. A command such as:
+`@async/cli` turns directories into a CLI. A command like:
 
 ```sh
-cli gh pull
+cli gh pull 123 --rebase
 ```
 
-maps to a command directory like:
+is routed to a directory, and the words that did not match become the
+script's arguments:
 
 ```text
-.cli/gh/pull/script.ts
+.cli/gh/pull/script.ts        argv: ["123", "--rebase"]
 ```
 
-The contract is defined in `SPEC.md`. The package implements local and
-user-global command discovery, command resolution, script execution with a
-trust model for local overlays, machine-readable listing, `--which`, command
-scaffolding with templates, command copy/move/remove, `--edit`, command packs
-via `--add`, shell completions, a tree doctor, an MCP server mode,
-context-file pointers, help, and version output.
+No registry, no config file, no argument framework. One lookup rule covers
+two trees: a repo-local `.cli/` overlay that travels with the project, and a
+user-global `~/.cli` for your personal tools. Proven commands get promoted
+from one to the other with a single command.
+
+Docs map: this README is the guided tour. [ROUTING.md](ROUTING.md) is the
+normative routing rules. [API_SURFACE.md](API_SURFACE.md) is the complete API
+reference. `SPEC.md` is the design contract.
 
 ## Install
 
 ```sh
-pnpm add -D @async/cli
+pnpm add -D @async/cli    # per project
+pnpm add -g @async/cli    # or globally
 ```
 
-## Binaries
+Requires Node 24+. The package ships two identical binaries, `cli` and
+`async-cli`, for setups where `cli` is taken.
 
-The package declares two equivalent binaries:
-
-```sh
-cli
-async-cli
-```
-
-## Command Roots
-
-`cli` discovers local `.cli/` overlays from the current working directory upward
-to the nearest Git root, then appends the user-global command tree. Use
-`ASYNC_CLI_GLOBAL_ROOT` to replace the user-global tree and
-`ASYNC_CLI_PROJECT_ROOT` to pin project-root behavior in tests or controlled
-launchers.
-
-## Built-Ins
+## Quick start
 
 ```sh
-cli help
-cli help gh
+# scaffold .cli/gh/pull/script.ts in this repo
+cli --new gh pull
+
+# it is immediately runnable (scaffolded overlays are auto-trusted)
+cli gh pull 123 --rebase      # script.ts gets ["123", "--rebase"]
+
+# see what exists, and what would run
 cli --list
-cli --list --json
 cli --which gh pull
-cli --new gh pr
-cli --new gh pr --root
-cli --new gh pr --template worker
-cli --edit gh pull
-cli --rm gh pull
-cli --cp gh pull
-cli --cp gh pull --to local
-cli --mv gh pull
-cli --mv gh pull --to local
-cli --add https://example.com/org/pack.git
-cli --trust
-cli --trust --status
-cli --untrust
-cli --doctor
-cli --completions bash
-cli --mcp
-cli --agents
-cli --agents --write
-cli --agents --check
-cli --agents --claude --write
-cli --version
+
+# promote it to your personal ~/.cli once it earns it
+cli --mv gh pull --to root
 ```
 
-Command scripts run from the caller's original working directory by default;
-a `// cli-cwd: project-root` or `// cli-cwd: script-dir` head comment changes
-that per script. `.js` and `.mjs` scripts run directly with Node; `.ts` and
-`.mts` scripts use Node 24 native type stripping.
+Cloned a repo that ships its own `.cli/`? Commands are visible immediately
+but refuse to run until you approve them once:
 
-Use `--cp` to clone a command directory between local and user-global command
-trees without removing the source. Use `--mv` when the source should be
-transferred instead, and `--rm` to delete a command directory.
+```sh
+cli --list          # inspection never needs trust
+cli --trust         # approve this repo's overlay, then run normally
+```
+
+## How routing works
+
+The full rules with worked examples live in [ROUTING.md](ROUTING.md). The
+short version:
+
+1. Starting at your working directory, walk upward and collect every `.cli/`
+   directory, nearest first, stopping at the Git root. Append `~/.cli` last.
+2. The first tree that contains any directory matching your first words
+   captures the command — nearer beats farther, always.
+3. Inside that tree, the longest path of words with a runnable `script.*`
+   wins; leftover words become the script's argv. `--` stops word matching
+   early.
+4. `help`, `lib`, `node_modules`, hidden (`.x`), and underscore-prefixed
+   (`_x`) names never route, so helper code can sit next to scripts.
+
+Rule 2 is what makes overlays powerful: a repo can define `.cli/gh/script.ts`
+and take over the whole `gh ...` namespace while you work in that repo, even
+though your `~/.cli/gh/clone` exists. That is deliberate — and it is exactly
+why local overlays are trust-gated. `cli --list` marks anything shadowed,
+`cli --which` shows what was hidden.
+
+## Writing commands
+
+A command script is a plain Node ESM program — no SDK, no wrapper:
+
+```ts
+// cli: Open a pull request against main
+// cli-cwd: project-root
+const [id, ...rest] = process.argv.slice(2);
+console.log(`pulling ${id} in ${process.cwd()}`);
+```
+
+| Contract | Detail |
+| --- | --- |
+| Arguments | `process.argv.slice(2)`, exactly as typed after the command |
+| Description | First line `// cli: ...` shows in `--list`, `help`, MCP |
+| Working dir | Caller's cwd; `// cli-cwd: project-root` or `script-dir` to change |
+| Stdio / exit | Inherited; your exit code is the command's exit code |
+| Languages | `.js`/`.mjs` run directly; `.ts`/`.mts` via Node 24 type stripping |
+| Helpers | Put shared code in `lib/` or `_anything/` — never routed |
+| Environment | `CLI_SCRIPT`, `CLI_ROOT`, `CLI_SCOPE`, `CLI_PROJECT_ROOT`, `CLI_COMMAND`, `CLI_CALLER_CWD` |
+
+Templates: keep reusable starting points in `_templates/<name>/` in any
+command tree and scaffold from them with `cli --new api users --template
+worker`.
+
+## Managing commands
+
+```sh
+cli --new gh pr                 # scaffold (nearest local overlay, or --root)
+cli --edit gh pr                # open the script in $VISUAL / $EDITOR
+cli --rm gh pr                  # delete (nested commands require --force)
+cli --cp gh pr --to root        # copy local -> user-global
+cli --mv gh pr --to local       # move user-global -> this repo
+```
+
+Transfers move whole command directories, preserve the command path, refuse
+to overwrite, and warn when a script imports through `../` (such imports may
+break outside their original tree).
 
 ## Trust
 
-Repo-local `.cli/` overlays are refused at execution time until you trust
-them, because cloned repositories can shadow your user-global commands:
+Local overlays are arbitrary code that arrives with a `git clone`, and
+shadowing means they can capture commands you type from muscle memory. So
+execution is gated, direnv-style:
 
 ```sh
-cli --trust           # trust the local overlays discovered from here
-cli --trust --status  # trusted | changed | untrusted per overlay
+cli --trust           # approve the overlays discovered from here
+cli --trust --status  # trusted | changed | untrusted, per overlay
 cli --untrust         # revoke
 ```
 
-Trust records a content hash of the overlay; any change requires re-trusting.
-Listing and `--which` never require trust. Set `ASYNC_CLI_TRUST=off` to
-disable enforcement in controlled environments.
+Trust records a content hash of the whole overlay; any change flips it to
+`changed` and blocks execution (exit 3) until you re-approve. Your own
+actions count as consent: `--new`, `--cp/--mv --to local`, and
+`--add --to local` keep the target overlay trusted without ceremony.
+`~/.cli` is always trusted. Set `ASYNC_CLI_TRUST=off` to disable the gate in
+controlled environments (such as CI).
+
+## Sharing commands
+
+Any Git repository with a `.cli/` tree is a command pack:
+
+```sh
+cli --add https://github.com/org/pack.git                # into ~/.cli
+cli --add https://github.com/org/pack.git --prefix vendor # namespaced: cli vendor <cmd>
+cli --add https://github.com/org/pack.git --to local      # into this repo
+```
+
+Installs are all-or-nothing: conflicts are listed and nothing is written
+unless you pass `--force`.
+
+## Agents and tooling
+
+The same command tree is discoverable by machines:
+
+```sh
+cli --agents --write   # pin a pointer block into AGENTS.md (--claude for CLAUDE.md)
+cli --list --json      # stable inventory: commands, descriptions, scripts, shadows
+cli --mcp              # MCP stdio server: commands become callable tools
+```
+
+`--mcp` needs zero dependencies and exposes each non-shadowed command as a
+tool (`gh pull` becomes `gh__pull`) taking `{ "args": [...] }`. Untrusted
+overlays are excluded.
 
 ## Completions
 
 ```sh
-eval "$(cli --completions bash)"   # or zsh
-cli --completions fish | source    # fish
+eval "$(cli --completions bash)"    # bash
+eval "$(cli --completions zsh)"     # zsh
+cli --completions fish | source     # fish
 ```
+
+Tab-completion covers command segments (shadow-aware) and built-in flags.
 
 ## Doctor
 
-`cli --doctor [--json]` audits every command root: ambiguous script
-directories, `../` imports that break `--cp`/`--mv`, empty command
-directories, untrusted overlays, missing descriptions, shadowed commands, and
-stale `--agents` pointer blocks.
-
-## MCP
-
-`cli --mcp` serves the command tree as MCP tools over stdio (JSON-RPC 2.0,
-zero dependencies), so agent runtimes can discover and call the same commands
-humans use. Untrusted local overlays are excluded.
-
-## Packs
-
-Install commands from any Git repository that carries a `.cli/` tree:
-
 ```sh
-cli --add https://example.com/org/pack.git             # into ~/.cli
-cli --add https://example.com/org/pack.git --prefix vendor
-cli --add https://example.com/org/pack.git --to local  # into this repo
+cli --doctor          # human report, exit 1 on errors
+cli --doctor --json   # { problems, summary } for tooling
 ```
+
+Finds ambiguous script directories, `../` imports that break transfers,
+empty command directories, untrusted or drifted overlays, stale `--agents`
+blocks, missing descriptions, and shadowed commands.
+
+## CLI reference
+
+| Command | Does |
+| --- | --- |
+| `cli <words...> [args...]` | Route and run a command |
+| `cli help [prefix]` | Usage, or commands below a prefix |
+| `cli --list [--json]` | Inventory, including shadowed entries |
+| `cli --which <words...>` | Selected script and what it shadows |
+| `cli --new <words...> [--root] [--template <name>]` | Scaffold a command |
+| `cli --edit <words...>` | Open the script in `$VISUAL`/`$EDITOR` |
+| `cli --rm <words...> [--root] [--force]` | Remove a command directory |
+| `cli --cp <words...> [--to root\|local]` | Copy between trees |
+| `cli --mv <words...> [--to root\|local]` | Move between trees |
+| `cli --add <git-url> [--to root\|local] [--prefix <name>] [--force]` | Install a command pack |
+| `cli --trust [--status]` / `cli --untrust` | Manage overlay trust |
+| `cli --doctor [--json]` | Audit the command trees |
+| `cli --completions <bash\|zsh\|fish>` | Emit shell completions |
+| `cli --mcp` | Serve commands over MCP stdio |
+| `cli --agents [--write\|--check] [--claude]` | Manage the context pointer block |
+| `cli --version` | Print the package version |
+
+Exit codes: the script's own for command runs; `2` for usage and routing
+errors; `3` for trust refusals; `1` for `--doctor` with errors and
+`--agents --check` drift.
 
 ## Development
 

@@ -29,7 +29,7 @@ if (Object.keys(packageJson.dependencies ?? {}).length > 0) {
   errors.push("runtime dependencies must stay empty for the scaffold");
 }
 
-for (const requiredFile of ["README.md", "SPEC.md", "AGENTS.md", "CHANGELOG.md", "tsconfig.json"]) {
+for (const requiredFile of ["README.md", "ROUTING.md", "API_SURFACE.md", "SPEC.md", "AGENTS.md", "CHANGELOG.md", "tsconfig.json"]) {
   try {
     await stat(requiredFile);
   } catch (error) {

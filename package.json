@@ -72,8 +72,10 @@
   },
   "files": [
     "AGENTS.md",
+    "API_SURFACE.md",
     "CHANGELOG.md",
     "README.md",
+    "ROUTING.md",
     "SPEC.md",
     "scripts/local-link.js",
     "dist"
