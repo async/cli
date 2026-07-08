@@ -1,6 +1,6 @@
 export const packageInfo = Object.freeze({
   name: "@async/cli",
-  version: "0.2.1",
+  version: "0.2.2",
   node: ">=24",
   binaries: ["cli", "async-cli"] as const,
   specVersion: 2,

@@ -41,7 +41,20 @@ export default definePipeline({
       cache: false,
       dependencyCache: false,
       packagePreviews: true,
-      pages: { target: "docs.site" }
+      pages: { target: "docs.site" },
+      // Receiver for the pipeline release update train (async-dep-bump):
+      // bump the pinned @async/pipeline, regenerate synced surfaces, verify,
+      // land on main when green, open a pull request when not.
+      dependencyBump: {
+        packages: ["@async/pipeline"],
+        verify: [
+          "pnpm run pipeline:sync:generate",
+          "pnpm run pipeline:github:generate",
+          "pnpm run release:check"
+        ],
+        success: "push",
+        failure: "pull-request"
+      }
     },
     tasks: {
       prefix: "pipeline",

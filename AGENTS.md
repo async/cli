@@ -19,6 +19,26 @@ that runs directory-backed project and user-global commands.
 - Do not move or delete `../cli (1)/SPEC.md`; it is source material outside this
   package.
 
+## Generated Artifacts And Pipeline
+
+- `@async/pipeline` (pinned in `devDependencies`) generates this repo's CI,
+  Pages, preview, and release automation from `pipeline.ts`.
+- Do not hand-edit `.github/workflows/async-pipeline.yml`, the locks under
+  `.locks/pipeline/`, or the generated `pipeline:*` scripts in `package.json`.
+  Change `pipeline.ts`, then run:
+
+```bash
+pnpm run pipeline:sync:generate
+pnpm run pipeline:sync:check
+pnpm run pipeline:github:check
+```
+
+- Releases of `@async/pipeline` dispatch `async-dep-bump` to this repo; the
+  generated `dependency-bump` job applies the bump, regenerates synced
+  surfaces, runs `release:check`, and pushes to `main` or opens a pull
+  request on failure. Manual pipeline version bumps should follow the same
+  steps: bump, regenerate, verify.
+
 ## Verification
 
 Run the package gate before handoff:

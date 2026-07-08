@@ -23,10 +23,22 @@ on:
         required: true
         type: choice
         options:
+          - "dependency-bump"
           - "pages"
           - "publish"
           - "release-doctor"
           - "verify"
+      package:
+        description: "Package path or dependency package"
+        required: false
+        type: string
+      version:
+        description: "Package version"
+        required: false
+        type: string
+  repository_dispatch:
+    types:
+      - "async-dep-bump"
 
 permissions:
   contents: read
@@ -62,7 +74,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run pipeline task pack
-        uses: async/actions/run@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/run@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           command: "pnpm async-pipeline github check && pnpm async-pipeline run-task pack"
           check-generated: false
@@ -71,47 +83,47 @@ jobs:
           CI: true
 
       - name: Plan release package
-        uses: async/actions/doctor@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/doctor@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           mode: plan
           package-path: "."
           evidence-dir: .async/release
-          release-command: "pnpm dlx github:async/release#v0.1.5"
+          release-command: "pnpm dlx github:async/release#v0.1.6"
         env:
           CI: true
 
       - name: Inspect release package
-        uses: async/actions/doctor@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/doctor@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           mode: inspect
           package-path: "."
           evidence-dir: .async/release
-          release-command: "pnpm dlx github:async/release#v0.1.5"
+          release-command: "pnpm dlx github:async/release#v0.1.6"
         env:
           CI: true
 
       - name: Check release changelog
-        uses: async/actions/doctor@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/doctor@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           mode: changelog
           package-path: "."
           evidence-dir: .async/release
-          release-command: "pnpm dlx github:async/release#v0.1.5"
+          release-command: "pnpm dlx github:async/release#v0.1.6"
         env:
           CI: true
 
       - name: Render release notes
-        uses: async/actions/doctor@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/doctor@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           mode: notes
           package-path: "."
           evidence-dir: .async/release
-          release-command: "pnpm dlx github:async/release#v0.1.5"
+          release-command: "pnpm dlx github:async/release#v0.1.6"
         env:
           CI: true
 
       - name: Create or update GitHub Release
-        uses: async/actions/publish@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/publish@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           package-path: "."
           mode: github-release
@@ -123,7 +135,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish GitHub Packages mirror
-        uses: async/actions/publish@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/publish@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           package-path: "."
           mode: github-packages
@@ -135,7 +147,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish npm package
-        uses: async/actions/publish@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/publish@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           package-path: "."
           mode: npm
@@ -148,12 +160,12 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Run release doctor
-        uses: async/actions/doctor@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/doctor@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           mode: doctor
           package-path: "."
           evidence-dir: .async/release
-          release-command: "pnpm dlx github:async/release#v0.1.5"
+          release-command: "pnpm dlx github:async/release#v0.1.6"
           network: live
         env:
           CI: true
@@ -182,7 +194,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run pipeline task pack
-        uses: async/actions/run@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/run@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           command: "pnpm async-pipeline github check && pnpm async-pipeline run-task pack"
           check-generated: false
@@ -191,12 +203,12 @@ jobs:
           CI: true
 
       - name: Run release doctor
-        uses: async/actions/doctor@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/doctor@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           mode: doctor
           package-path: "."
           evidence-dir: .async/release
-          release-command: "pnpm dlx github:async/release#v0.1.5"
+          release-command: "pnpm dlx github:async/release#v0.1.6"
           network: live
         env:
           CI: true
@@ -225,7 +237,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run pipeline task pack
-        uses: async/actions/run@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/run@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           command: "pnpm async-pipeline github check && pnpm async-pipeline run-task pack"
           check-generated: false
@@ -234,31 +246,31 @@ jobs:
           CI: true
 
       - name: Plan main package preview
-        run: pnpm dlx github:async/release#v0.1.5 preview plan --package . --mode main --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json
+        run: pnpm dlx github:async/release#v0.1.6 preview plan --package . --mode main --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json
 
       - name: Stage main package preview
-        run: pnpm dlx github:async/release#v0.1.5 preview stage --package . --mode main --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --registry https://npm.pkg.github.com
+        run: pnpm dlx github:async/release#v0.1.6 preview stage --package . --mode main --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --registry https://npm.pkg.github.com
 
       - name: Inspect main package preview
-        run: pnpm dlx github:async/release#v0.1.5 preview inspect --package . --mode main --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json
+        run: pnpm dlx github:async/release#v0.1.6 preview inspect --package . --mode main --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json
 
       - name: Publish main package preview
         id: async-main-package-preview
-        uses: async/actions/preview@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/preview@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           package-path: "."
           target-registry: "https://npm.pkg.github.com"
           mode: main
           comment: false
           token-env-name: "GITHUB_TOKEN"
-          release-package: "github:async/release#v0.1.5"
+          release-package: "github:async/release#v0.1.6"
         env:
           CI: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify main package preview
         if: steps.async-main-package-preview.outputs.package-spec != ''
-        run: pnpm dlx github:async/release#v0.1.5 preview doctor --package . --mode main --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --registry https://npm.pkg.github.com --network live
+        run: pnpm dlx github:async/release#v0.1.6 preview doctor --package . --mode main --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --registry https://npm.pkg.github.com --network live
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -282,7 +294,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run pipeline job
-        uses: async/actions/run@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/run@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           command: "pnpm async-pipeline github check && pnpm async-pipeline run verify"
           check-generated: false
@@ -310,7 +322,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run Pages target
-        uses: async/actions/run@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/run@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           command: "pnpm async-pipeline github check && pnpm async-pipeline run-task docs.site"
           check-generated: false
@@ -319,7 +331,7 @@ jobs:
           CI: true
 
       - name: Upload Pages artifact
-        uses: async/actions/pages@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/pages@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           mode: static
           path: ".async/pages"
@@ -338,7 +350,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: async/actions/pages@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/pages@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           upload: false
           deploy: true
@@ -370,7 +382,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run package preview target
-        uses: async/actions/run@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/run@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           command: "pnpm async-pipeline github check && pnpm async-pipeline run-task pack"
           check-generated: false
@@ -379,37 +391,37 @@ jobs:
           CI: true
 
       - name: Plan PR package preview
-        run: pnpm dlx github:async/release#v0.1.5 preview plan --package . --mode pr --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --pr-number "${{ github.event.pull_request.number }}" --head-sha "${{ github.event.pull_request.head.sha }}"
+        run: pnpm dlx github:async/release#v0.1.6 preview plan --package . --mode pr --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --pr-number "${{ github.event.pull_request.number }}" --head-sha "${{ github.event.pull_request.head.sha }}"
 
       - name: Stage PR package preview
-        run: pnpm dlx github:async/release#v0.1.5 preview stage --package . --mode pr --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --registry https://npm.pkg.github.com --pr-number "${{ github.event.pull_request.number }}" --head-sha "${{ github.event.pull_request.head.sha }}"
+        run: pnpm dlx github:async/release#v0.1.6 preview stage --package . --mode pr --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --registry https://npm.pkg.github.com --pr-number "${{ github.event.pull_request.number }}" --head-sha "${{ github.event.pull_request.head.sha }}"
 
       - name: Inspect PR package preview
-        run: pnpm dlx github:async/release#v0.1.5 preview inspect --package . --mode pr --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --pr-number "${{ github.event.pull_request.number }}" --head-sha "${{ github.event.pull_request.head.sha }}"
+        run: pnpm dlx github:async/release#v0.1.6 preview inspect --package . --mode pr --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --pr-number "${{ github.event.pull_request.number }}" --head-sha "${{ github.event.pull_request.head.sha }}"
 
       - name: Publish package preview
         id: async-package-preview
-        uses: async/actions/preview@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/preview@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           package-path: "."
           target-registry: "https://npm.pkg.github.com"
           mode: pr
           comment: true
           token-env-name: "GITHUB_TOKEN"
-          release-package: "github:async/release#v0.1.5"
+          release-package: "github:async/release#v0.1.6"
         env:
           CI: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify PR package preview
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.async-package-preview.outputs.package-spec != ''
-        run: pnpm dlx github:async/release#v0.1.5 preview doctor --package . --mode pr --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --registry https://npm.pkg.github.com --network live --pr-number "${{ github.event.pull_request.number }}" --head-sha "${{ github.event.pull_request.head.sha }}"
+        run: pnpm dlx github:async/release#v0.1.6 preview doctor --package . --mode pr --namespace "${{ github.repository_owner }}" --source-repository "${{ github.repository }}" --source-sha "${{ github.sha }}" --evidence-dir .async/release --json --registry https://npm.pkg.github.com --network live --pr-number "${{ github.event.pull_request.number }}" --head-sha "${{ github.event.pull_request.head.sha }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Comment package preview
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.async-package-preview.outputs.comment-body != ''
-        uses: async/actions/comment@8e63d1f4bf6a136b428035aa810a15ddc987c068 # v0.1.22
+        uses: async/actions/comment@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
         with:
           mode: pr-comment
           repository: ${{ github.repository }}
@@ -417,3 +429,45 @@ jobs:
           marker: ${{ steps.async-package-preview.outputs.comment-marker }}
           body: ${{ steps.async-package-preview.outputs.comment-body }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-bump:
+    name: dependency-bump
+    if: (github.event_name == 'repository_dispatch' && github.event.action == 'async-dep-bump') || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'dependency-bump')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm runtime
+        uses: pnpm/setup@cf03a9b516e09bc5a90f041fc26fc930c9dc631b # v1.0.0
+        with:
+          version: 11.7.0
+          runtime: node@24
+          install: false
+          cache: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply dependency bump
+        uses: async/actions/dependency-bump@ff415041176eaffaa2ba19363fe371188f52ee1f # v0.1.24
+        with:
+          package-name: ${{ github.event.client_payload.package || github.event.inputs.package || '' }}
+          version: ${{ github.event.client_payload.version || github.event.inputs.version || '' }}
+          allowed-packages: |
+            @async/pipeline
+          package-manager: "pnpm"
+          verify: |
+            pnpm run pipeline:sync:generate
+            pnpm run pipeline:github:generate
+            pnpm run release:check
+          success-mode: push
+          failure-mode: pull-request
+          branch-prefix: "async/dependency-bump/"
+          base-branch: "main"
+          repository: ${{ github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}

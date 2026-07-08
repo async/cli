@@ -1,6 +1,6 @@
 {
   "name": "@async/cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Filesystem-routed project and user-global commands for Async workspaces.",
   "license": "MIT",
   "type": "module",
@@ -85,7 +85,7 @@
   },
   "sideEffects": false,
   "devDependencies": {
-    "@async/pipeline": "0.9.33",
+    "@async/pipeline": "0.9.35",
     "@types/node": "24.12.4",
     "typescript": "6.0.3"
   }

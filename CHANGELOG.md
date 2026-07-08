@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.2 - 2026-07-06
+
+- Updates the Pipeline devDependency to `@async/pipeline@0.9.35`; regenerated
+  workflows now pin `async/actions@v0.1.24` and `@async/release@v0.1.6`.
+- Adds the generated `dependency-bump` receiver job
+  (`sync.github.dependencyBump`) so `async-dep-bump` dispatches from the
+  pipeline release update train bump the pinned dependency, regenerate synced
+  surfaces, verify with `release:check`, and land on `main` or open a pull
+  request on failure.
+- Documents the pipeline-generated CI, Pages, preview, and release automation
+  in README.md and AGENTS.md.
+
 ## 0.2.1 - 2026-07-06
 
 - Exports `CommandList`, `CreateCommandResult`, and `MoveCommandResult` from
