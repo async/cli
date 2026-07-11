@@ -3,7 +3,9 @@ import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { packageInfo, renderHelp } from "../dist/index.js";
+import * as asyncCli from "../dist/index.js";
+
+const { packageInfo, renderHelp } = asyncCli;
 
 test("package metadata defines the @async/cli scaffold", async () => {
   const packageJson = JSON.parse(await readFile("package.json", "utf8"));
@@ -21,6 +23,7 @@ test("root import is metadata-only", () => {
   assert.equal(packageInfo.node, ">=24");
   assert.equal(packageInfo.routerStatus, "implemented");
   assert.equal(packageInfo.contextPointerStatus, "implemented");
+  assert.ok(!("runMcpServer" in asyncCli));
 });
 
 test("help states the router surface", () => {
@@ -38,7 +41,7 @@ test("help states the router surface", () => {
   assert.match(help, /cli --untrust/);
   assert.match(help, /cli --doctor \[--json\]/);
   assert.match(help, /cli --completions <bash\|zsh\|fish>/);
-  assert.match(help, /cli --mcp/);
+  assert.doesNotMatch(help, /cli --mcp/);
 });
 
 test("cli --version prints the package version", () => {

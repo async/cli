@@ -9,8 +9,6 @@ export { builtinFlags, complete, completionScript } from "./completions.js";
 export type { CompletionShell } from "./completions.js";
 export { renderDoctorReport, runDoctor } from "./doctor.js";
 export type { DoctorProblem, DoctorReport, DoctorSeverity } from "./doctor.js";
-export { runMcpServer } from "./mcp.js";
-export type { McpIo } from "./mcp.js";
 export { addPack } from "./packs.js";
 export type { AddPackOptions, AddPackResult } from "./packs.js";
 export declare function renderHelp(commands?: string[]): string;

@@ -11,7 +11,6 @@ export const builtinFlags = [
     "--edit",
     "--help",
     "--list",
-    "--mcp",
     "--mv",
     "--new",
     "--rm",

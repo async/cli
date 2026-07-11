@@ -6,7 +6,6 @@ import { handleAgentsCommand } from "./agents.js";
 import { complete, completionScript } from "./completions.js";
 import { renderDoctorReport, runDoctor } from "./doctor.js";
 import { CliError, addPack, copyCommand, createCommand, discoverRoots, listCommands, moveCommand, packageInfo, removeCommand, renderHelp, resolveCommand, resolveScopedRoot, runCommand } from "./index.js";
-import { runMcpServer } from "./mcp.js";
 import { localOverlayTrust, overlayTrustState, recordOverlayTrust, refreshOverlayTrustIfKnown, trustLocalOverlays, untrustLocalOverlays } from "./trust.js";
 export async function main(argv = process.argv.slice(2), io = process) {
     const [first] = argv;
@@ -159,9 +158,6 @@ export async function main(argv = process.argv.slice(2), io = process) {
                 return 1;
             }
             return 0;
-        }
-        if (first === "--mcp") {
-            return await runMcpServer();
         }
         if (first === "--add") {
             const toFlag = extractValueFlag(argv.slice(1), "--to");

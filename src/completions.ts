@@ -15,7 +15,6 @@ export const builtinFlags: readonly string[] = [
   "--edit",
   "--help",
   "--list",
-  "--mcp",
   "--mv",
   "--new",
   "--rm",

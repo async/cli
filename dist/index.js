@@ -4,7 +4,6 @@ export { runCommand } from "./run.js";
 export { ensureOverlayTrusted, hashOverlayTree, isTrustEnforced, localOverlayTrust, overlayTrustState, recordOverlayTrust, removeOverlayTrust, trustLocalOverlays, trustStorePath, untrustLocalOverlays } from "./trust.js";
 export { builtinFlags, complete, completionScript } from "./completions.js";
 export { renderDoctorReport, runDoctor } from "./doctor.js";
-export { runMcpServer } from "./mcp.js";
 export { addPack } from "./packs.js";
 export function renderHelp(commands = []) {
     const commandLines = commands.length > 0
@@ -30,7 +29,6 @@ export function renderHelp(commands = []) {
         "  cli --untrust",
         "  cli --doctor [--json]",
         "  cli --completions <bash|zsh|fish>",
-        "  cli --mcp",
         "  cli --agents [--write|--check] [--claude]",
         "  cli <command...> [args...]",
         "",

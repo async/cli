@@ -214,7 +214,6 @@ cli --doctor
 cli --doctor --json
 cli --completions bash
 cli --complete -- gh pu
-cli --mcp
 cli --agents
 cli --agents --write
 cli --agents --check
@@ -251,7 +250,6 @@ cli --version
 - `cli --doctor` audits the command trees (see Doctor).
 - `cli --completions <shell>` and the hidden `cli --complete` helper provide
   shell completions (see Completions).
-- `cli --mcp` serves the command tree over MCP stdio (see MCP Server Mode).
 - `cli --agents` manages repo context file discoverability.
 
 `--new` target selection:
@@ -366,25 +364,6 @@ loudly; errors produce no candidates.
 Exit code is 1 when any error is present, otherwise 0. `--json` emits
 `{ version, problems, summary }` for tooling.
 
-### MCP Server Mode
-
-`cli --mcp` runs a Model Context Protocol server over stdio using
-newline-delimited JSON-RPC 2.0, with zero runtime dependencies. It handles
-`initialize`, `ping`, `tools/list`, and `tools/call`.
-
-- Every non-shadowed command becomes a tool. Command words are joined with
-  `__` and sanitized to MCP-safe names (`gh pull` becomes `gh__pull`).
-- Tool descriptions come from the `// cli:` line.
-- Each tool accepts `{ "args": ["..."] }` and forwards them to the script.
-- `tools/call` captures stdout and stderr (capped at 1 MiB each) and reports
-  nonzero exits as `isError: true`.
-- Commands from untrusted local overlays are excluded from `tools/list` and
-  refused at call time while trust enforcement is active. Trust is rechecked
-  against the resolved local overlay immediately before execution.
-- MCP stdio is a trusted-client boundary: starting the server authorizes the
-  connected client to invoke every listed command and pass arguments. The MCP
-  host owns any narrower per-call approval policy.
-
 ### Command Packs
 
 `cli --add <git-url> [--to root|local] [--prefix <name>] [--force]` installs
@@ -446,7 +425,6 @@ live filesystem without executing commands or requiring overlay trust:
   - `addPack(options, source)`
   - `runDoctor(options)`
   - `complete(options, words)` and `completionScript(shell)`
-  - `runMcpServer(options, io)`
   - trust helpers: `trustLocalOverlays`, `untrustLocalOverlays`,
     `localOverlayTrust`, `overlayTrustState`, `recordOverlayTrust`,
     `removeOverlayTrust`, `ensureOverlayTrusted`, `hashOverlayTree`,
@@ -494,7 +472,7 @@ overlay is refused by default — the direnv model.
 - `cli --trust --status` reports `trusted`, `changed`, or `untrusted` per
   overlay. `cli --untrust` revokes trust.
 - Read-only surfaces (`--list`, `--which`, `help`, completions) never require
-  trust; execution surfaces (`cli <cmd>`, MCP `tools/call`) always check it.
+  trust; command execution always checks it.
 - Mutations performed through the CLI are consent: `--new`, `--cp --to local`,
   `--mv --to local`, and `--add --to local` record or refresh trust for the
   target overlay when it is fresh or was already trusted. They never silently
@@ -512,6 +490,8 @@ overlay is refused by default — the direnv model.
 - Cross-platform shell launcher behavior beyond Node process spawning.
 - Arbitrary context files for `--agents`; only `AGENTS.md` and explicit
   `--claude` are in scope.
+- Protocol servers and remote execution adapters; `cli --list --json` is the
+  machine-discovery boundary.
 - A hosted pack registry; packs are plain Git repositories.
 
 ## Allowed Files

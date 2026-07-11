@@ -61,9 +61,6 @@ export type { CompletionShell } from "./completions.js";
 export { renderDoctorReport, runDoctor } from "./doctor.js";
 export type { DoctorProblem, DoctorReport, DoctorSeverity } from "./doctor.js";
 
-export { runMcpServer } from "./mcp.js";
-export type { McpIo } from "./mcp.js";
-
 export { addPack } from "./packs.js";
 export type { AddPackOptions, AddPackResult } from "./packs.js";
 
@@ -92,7 +89,6 @@ export function renderHelp(commands: string[] = []): string {
     "  cli --untrust",
     "  cli --doctor [--json]",
     "  cli --completions <bash|zsh|fish>",
-    "  cli --mcp",
     "  cli --agents [--write|--check] [--claude]",
     "  cli <command...> [args...]",
     "",

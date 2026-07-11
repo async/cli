@@ -36,6 +36,7 @@ test("--complete suggests built-in flags for a leading dash", async () => {
     assert.ok(flags.includes("--list"));
     assert.ok(flags.includes("--doctor"));
     assert.ok(flags.includes("--trust"));
+    assert.ok(!flags.includes("--mcp"));
   });
 });
 

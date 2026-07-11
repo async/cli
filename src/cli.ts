@@ -21,7 +21,6 @@ import {
   runCommand
 } from "./index.js";
 import type { CommandEntry, OverlayTrustState } from "./index.js";
-import { runMcpServer } from "./mcp.js";
 import {
   localOverlayTrust,
   overlayTrustState,
@@ -205,10 +204,6 @@ export async function main(argv = process.argv.slice(2), io: CliIo = process): P
         return 1;
       }
       return 0;
-    }
-
-    if (first === "--mcp") {
-      return await runMcpServer();
     }
 
     if (first === "--add") {

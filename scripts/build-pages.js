@@ -7,8 +7,8 @@ const site = {
   repo: "cli",
   stage: "Alpha",
   description: "Filesystem-routed project and user-global commands for Async workspaces.",
-  lead: "Create, inspect, run, and share directory-backed commands from trusted project overlays or a user-global tree — with shell completions, a tree doctor, command packs, and an MCP server for tooling.",
-  quickstart: "pnpm add -D @async/cli\n\ncli --new gh pull      # scaffold .cli/gh/pull/script.ts\ncli gh pull 123        # run it: argv [\"123\"]\ncli --list             # what exists, what shadows what\ncli --trust            # approve a cloned repo's overlay\ncli --mv gh pull --to root   # promote to ~/.cli"
+  lead: "Create, inspect, run, and share directory-backed commands from trusted local overlays or a user-global tree — with shell completions, a tree doctor, command packs, and stable machine-readable discovery.",
+  quickstart: "pnpm add -D @async/cli\n\ncli --new gh pull      # scaffold .cli/gh/pull/script.ts\ncli gh pull 123        # run it: argv [\"123\"]\ncli --list             # what exists, what shadows what\ncli --list --json      # machine-readable command inventory\ncli --trust            # approve a cloned repo's overlay\ncli --mv gh pull --to root   # promote to ~/.cli"
 };
 
 const mdLinkTargets = {

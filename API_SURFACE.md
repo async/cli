@@ -20,7 +20,7 @@ import {
   discoverRoots, listCommands, resolveCommand, runCommand,
   createCommand, removeCommand, copyCommand, moveCommand, addPack,
   trustLocalOverlays, untrustLocalOverlays, localOverlayTrust,
-  runDoctor, complete, completionScript, runMcpServer,
+  runDoctor, complete, completionScript,
   CliError, packageInfo
 } from "@async/cli";
 ```
@@ -403,28 +403,6 @@ Problem codes: `ambiguous-script` and `trust-store` (errors);
 `shadowed-command`, `agents-missing` (infos). `runDoctor` never throws for
 tree problems — it reports them. The CLI exits 1 when `summary.errors > 0`.
 
-## MCP
-
-```ts
-interface McpIo {
-  input: NodeJS.ReadableStream;              // default process.stdin
-  output: Pick<NodeJS.WriteStream, "write">; // default process.stdout
-}
-runMcpServer(options?: DiscoverRootsOptions, io?: McpIo): Promise<number>
-```
-
-A zero-dependency Model Context Protocol server over newline-delimited
-JSON-RPC 2.0. Handles `initialize`, `ping`, `tools/list`, and `tools/call`;
-resolves when the input stream ends. Non-shadowed commands become tools named
-by joining words with `__` and sanitizing to `[a-zA-Z0-9_-]` (`gh pull` →
-`gh__pull`; collisions get `-2`, `-3`, ...). Each tool accepts
-`{ "args": string[] }`. Calls capture stdout/stderr (1 MiB cap each) and
-report nonzero exits as `isError: true`. Untrusted local overlays are
-excluded from listing and refused at call time, with trust rechecked against
-the resolved overlay before execution. The connected stdio client is trusted
-to invoke every listed command; narrower tool approval belongs in the MCP
-host.
-
 ## Packs
 
 ```ts
@@ -482,7 +460,6 @@ renderHelp(commands?: string[]): string  // the "cli help" text
 | `cli --doctor --json` | `runDoctor()` |
 | `cli --complete -- <words...>` | `complete({}, words)` |
 | `cli --completions <shell>` | `completionScript(shell)` |
-| `cli --mcp` | `runMcpServer()` |
 
 `cli --edit` and `cli --agents` are CLI-only conveniences.
 

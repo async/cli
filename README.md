@@ -94,7 +94,7 @@ console.log(`pulling ${id} in ${process.cwd()}`);
 | Contract | Detail |
 | --- | --- |
 | Arguments | `process.argv.slice(2)`, exactly as typed after the command |
-| Description | First line `// cli: ...` shows in `--list`, `help`, MCP |
+| Description | First line `// cli: ...` shows in `--list`, `--list --json`, and `help` |
 | Working dir | Caller's cwd; `// cli-cwd: project-root` or `script-dir` to change |
 | Stdio / exit | Inherited; your exit code is the command's exit code |
 | Languages | `.js`/`.mjs` run directly; `.ts`/`.mts` via Node 24 type stripping |
@@ -155,24 +155,23 @@ cli --add https://github.com/org/pack.git --to local      # into this repo
 Installs are all-or-nothing: conflicts are listed and nothing is written
 unless you pass `--force`.
 
-## Agents and tooling
+## Context files and tooling
 
 The same command tree is discoverable by machines:
 
 ```sh
 cli --agents --write   # pin a pointer block into AGENTS.md (--claude for CLAUDE.md)
 cli --list --json      # stable inventory: commands, descriptions, scripts, shadows
-cli --mcp              # MCP stdio server: commands become callable tools
 ```
 
-`--mcp` needs zero dependencies and exposes each non-shadowed command as a
-tool (`gh pull` becomes `gh__pull`) taking `{ "args": [...] }`. Untrusted
-overlays are excluded and local trust is rechecked before execution.
+`cli --list --json` is the supported machine-discovery surface. It reports the
+live roots, descriptions from `// cli: ...`, script paths, and shadowing without
+executing a command or requiring overlay trust.
 
-Starting MCP mode authorizes the connected stdio client to invoke every listed
-command and pass arguments. Keep that stream local to a trusted MCP host, and
-apply any narrower tool approval policy in the host. See [SECURITY.md](./SECURITY.md)
-for the complete boundary.
+The `--agents` context-file subsystem is the only feature that searches for a
+Git repository boundary: it uses the repository root to place or check
+`AGENTS.md` or `CLAUDE.md`, including during doctor audits. Command discovery
+itself does not consult `.git`.
 
 ## Completions
 
@@ -212,7 +211,6 @@ blocks, missing descriptions, and shadowed commands.
 | `cli --trust [--status]` / `cli --untrust` | Manage overlay trust |
 | `cli --doctor [--json]` | Audit the command trees |
 | `cli --completions <bash\|zsh\|fish>` | Emit shell completions |
-| `cli --mcp` | Serve commands over MCP stdio |
 | `cli --agents [--write\|--check] [--claude]` | Manage the context pointer block |
 | `cli --version` | Print the package version |
 

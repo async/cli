@@ -41,6 +41,17 @@ for (const requiredFile of ["README.md", "ROUTING.md", "API_SURFACE.md", "SPEC.m
   }
 }
 
+for (const removedFile of ["dist/mcp.js", "dist/mcp.js.map", "dist/mcp.d.ts", "dist/mcp.d.ts.map"]) {
+  try {
+    await stat(removedFile);
+    errors.push(`removed MCP artifact must not be published: ${removedFile}`);
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      throw error;
+    }
+  }
+}
+
 for (const file of await collectJavaScriptFiles(["scripts", "tests"])) {
   const result = spawnSync(process.execPath, ["--check", file], {
     encoding: "utf8"

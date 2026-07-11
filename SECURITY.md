@@ -16,16 +16,13 @@ overlay is reviewed and trusted again.
 `ASYNC_CLI_TRUST=off` deliberately disables this boundary and is intended only
 for controlled environments.
 
-## MCP boundary
+## Inspection boundary
 
-`cli --mcp` is an explicit local stdio execution surface. Starting it grants
-the connected MCP client permission to invoke every listed trusted command and
-to pass arguments to those commands. The trust gate verifies command content;
-it is not per-call authorization for the connected client.
-
-Do not proxy or bridge the MCP stdio stream to an untrusted party. Apply tool
-approval and argument policy in the MCP host when commands require narrower
-authorization.
+`cli --list --json`, `cli --which`, help, completions, and doctor inspect the
+live command trees without executing scripts or requiring overlay trust.
+Machine consumers should use `cli --list --json` for command discovery and
+invoke commands explicitly through `cli <words...> [args...]`, where the same
+trust gate applies as for interactive use.
 
 ## Reporting
 
