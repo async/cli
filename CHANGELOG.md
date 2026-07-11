@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.3 - 2026-07-11
+
+- Covers symlinked file and directory contents in local-overlay trust hashes,
+  includes symlinked `.cli` root identity, and rejects cyclic directory links.
+- Rechecks the resolved local overlay immediately before MCP command execution.
+- Documents the trusted-client boundary for the local MCP stdio server.
+
 ## 0.2.2 - 2026-07-06
 
 - Updates the Pipeline devDependency to `@async/pipeline@0.9.35`; regenerated
