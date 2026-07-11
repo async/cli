@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, readlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, readlink, realpath, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -179,34 +179,98 @@ async function writeTrustStore(options: DiscoverRootsOptions, store: TrustStore)
 
 async function collectFiles(directory: string): Promise<Array<{ relative: string; digest: string }>> {
   const results: Array<{ relative: string; digest: string }> = [];
+  const activeDirectories = new Set<string>();
+
+  try {
+    if ((await lstat(directory)).isSymbolicLink()) {
+      const target = await readlink(directory);
+      const linked = await inspectSymlink(directory, target);
+      results.push({ relative: ".", digest: linked.digest });
+      if (linked.kind !== "directory") {
+        return results;
+      }
+    }
+  } catch (error) {
+    if (isMissing(error)) {
+      return results;
+    }
+    throw error;
+  }
 
   async function walk(current: string): Promise<void> {
-    let entries;
+    let resolvedDirectory: string;
     try {
-      entries = await readdir(current, { withFileTypes: true });
+      resolvedDirectory = await realpath(current);
     } catch (error) {
       if (isMissing(error)) {
         return;
       }
       throw error;
     }
+    if (activeDirectories.has(resolvedDirectory)) {
+      const relative = path.relative(directory, current) || ".";
+      throw new CliError("INVALID_ARGS", `Cannot trust overlay with a cyclic directory symlink: ${relative}`);
+    }
+    activeDirectories.add(resolvedDirectory);
 
-    for (const entry of entries) {
-      const absolute = path.join(current, entry.name);
-      const relative = path.relative(directory, absolute);
-      if (entry.isDirectory()) {
-        await walk(absolute);
-      } else if (entry.isSymbolicLink()) {
-        const target = await readlink(absolute);
-        results.push({ relative, digest: sha256(`link:${target}`) });
-      } else if (entry.isFile()) {
-        results.push({ relative, digest: sha256(await readFile(absolute)) });
+    try {
+      let entries;
+      try {
+        entries = await readdir(current, { withFileTypes: true });
+      } catch (error) {
+        if (isMissing(error)) {
+          return;
+        }
+        throw error;
       }
+
+      for (const entry of entries) {
+        const absolute = path.join(current, entry.name);
+        const relative = path.relative(directory, absolute);
+        if (entry.isDirectory()) {
+          await walk(absolute);
+        } else if (entry.isSymbolicLink()) {
+          const target = await readlink(absolute);
+          const linked = await inspectSymlink(absolute, target);
+          results.push({ relative, digest: linked.digest });
+          if (linked.kind === "directory") {
+            await walk(absolute);
+          }
+        } else if (entry.isFile()) {
+          results.push({ relative, digest: sha256(await readFile(absolute)) });
+        }
+      }
+    } finally {
+      activeDirectories.delete(resolvedDirectory);
     }
   }
 
   await walk(directory);
   return results;
+}
+
+async function inspectSymlink(
+  file: string,
+  target: string
+): Promise<{ digest: string; kind: "directory" | "file" | "missing" }> {
+  try {
+    const targetStat = await stat(file);
+    if (targetStat.isFile()) {
+      return {
+        digest: sha256(`link:${target}\0file:${sha256(await readFile(file))}`),
+        kind: "file"
+      };
+    }
+    if (targetStat.isDirectory()) {
+      return { digest: sha256(`link:${target}\0directory`), kind: "directory" };
+    }
+    throw new CliError("INVALID_ARGS", `Cannot trust unsupported symlink target: ${file}`);
+  } catch (error) {
+    if (isMissing(error)) {
+      return { digest: sha256(`link:${target}\0missing`), kind: "missing" };
+    }
+    throw error;
+  }
 }
 
 function sha256(content: string | Buffer): string {

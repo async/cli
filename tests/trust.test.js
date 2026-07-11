@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -40,6 +40,118 @@ test("changed overlays are refused until re-trusted", async () => {
 
     assert.equal(spawnCli(["--trust"], { cwd: project, env }).status, 0);
     assert.equal(spawnCli(["deploy"], { cwd: project, env }).status, 0);
+  });
+});
+
+test("changed symlink targets are refused until re-trusted", async () => {
+  await withFixture(async ({ root, project, env }) => {
+    const target = path.join(root, "deploy-target.js");
+    const script = path.join(project, ".cli", "deploy", "script.js");
+    await writeFile(target, "console.log('v1');\n", "utf8");
+    await mkdir(path.dirname(script), { recursive: true });
+    await symlink(target, script);
+
+    assert.equal(spawnCli(["--trust"], { cwd: project, env }).status, 0);
+    const allowed = spawnCli(["deploy"], { cwd: project, env });
+    assert.equal(allowed.status, 0, allowed.stderr);
+    assert.match(allowed.stdout, /v1/);
+
+    await writeFile(target, "console.log('v2');\n", "utf8");
+    const refused = spawnCli(["deploy"], { cwd: project, env });
+    assert.equal(refused.status, 3);
+    assert.match(refused.stderr, /changed since it was trusted/);
+
+    assert.equal(spawnCli(["--trust"], { cwd: project, env }).status, 0);
+    const retrusted = spawnCli(["deploy"], { cwd: project, env });
+    assert.equal(retrusted.status, 0, retrusted.stderr);
+    assert.match(retrusted.stdout, /v2/);
+  });
+});
+
+test("changed symlinked command directories are refused", async () => {
+  await withFixture(async ({ root, project, env }) => {
+    const target = path.join(root, "deploy-command");
+    const overlay = path.join(project, ".cli");
+    await writeScript(path.join(target, "script.js"), "console.log('v1');\n");
+    await mkdir(overlay, { recursive: true });
+    await symlink(target, path.join(overlay, "deploy"));
+
+    assert.equal(spawnCli(["--trust"], { cwd: project, env }).status, 0);
+    assert.match(spawnCli(["deploy"], { cwd: project, env }).stdout, /v1/);
+
+    await writeFile(path.join(target, "script.js"), "console.log('v2');\n", "utf8");
+    const status = spawnCli(["--trust", "--status"], { cwd: project, env });
+    assert.match(status.stdout, /^changed /m);
+    const refused = spawnCli(["deploy"], { cwd: project, env });
+    assert.equal(refused.status, 3);
+    assert.match(refused.stderr, /changed since it was trusted/);
+  });
+});
+
+test("changed symlinked library directories are refused", async () => {
+  await withFixture(async ({ root, project, env }) => {
+    const library = path.join(root, "linked-library");
+    const overlay = path.join(project, ".cli");
+    await writeScript(path.join(overlay, "deploy", "script.js"), "import { value } from '../lib/value.js';\nconsole.log(value);\n");
+    await writeScript(path.join(library, "value.js"), "export const value = 'v1';\n");
+    await symlink(library, path.join(overlay, "lib"));
+
+    assert.equal(spawnCli(["--trust"], { cwd: project, env }).status, 0);
+    assert.match(spawnCli(["deploy"], { cwd: project, env }).stdout, /v1/);
+
+    await writeFile(path.join(library, "value.js"), "export const value = 'v2';\n", "utf8");
+    const refused = spawnCli(["deploy"], { cwd: project, env });
+    assert.equal(refused.status, 3);
+    assert.match(refused.stderr, /changed since it was trusted/);
+  });
+});
+
+test("cyclic directory symlinks cannot be trusted", async () => {
+  await withFixture(async ({ project, env }) => {
+    const overlay = path.join(project, ".cli");
+    await writeScript(path.join(overlay, "deploy", "script.js"));
+    await mkdir(path.join(overlay, "lib"), { recursive: true });
+    await symlink(overlay, path.join(overlay, "lib", "cycle"));
+
+    const trust = spawnCli(["--trust"], { cwd: project, env });
+    assert.equal(trust.status, 2);
+    assert.match(trust.stderr, /cyclic directory symlink/);
+  });
+});
+
+test("retargeted symlinked overlay roots are refused", async () => {
+  await withFixture(async ({ root, project, env }) => {
+    const firstTarget = path.join(root, "overlay-one");
+    const secondTarget = path.join(root, "overlay-two");
+    const overlay = path.join(project, ".cli");
+    await writeScript(path.join(firstTarget, "deploy", "script.js"), "console.log('same');\n");
+    await writeScript(path.join(secondTarget, "deploy", "script.js"), "console.log('same');\n");
+    await symlink(firstTarget, overlay);
+
+    assert.equal(spawnCli(["--trust"], { cwd: project, env }).status, 0);
+    assert.equal(spawnCli(["deploy"], { cwd: project, env }).status, 0);
+
+    await rm(overlay);
+    await symlink(secondTarget, overlay);
+    const refused = spawnCli(["deploy"], { cwd: project, env });
+    assert.equal(refused.status, 3);
+    assert.match(refused.stderr, /changed since it was trusted/);
+  });
+});
+
+test("materialized directory symlink targets invalidate trust", async () => {
+  await withFixture(async ({ root, project, env }) => {
+    const target = path.join(root, "future-command");
+    const overlay = path.join(project, ".cli");
+    await writeScript(path.join(overlay, "existing", "script.js"));
+    await symlink(target, path.join(overlay, "future"));
+
+    assert.equal(spawnCli(["--trust"], { cwd: project, env }).status, 0);
+    await writeScript(path.join(target, "script.js"), "console.log('materialized');\n");
+
+    const refused = spawnCli(["future"], { cwd: project, env });
+    assert.equal(refused.status, 3);
+    assert.match(refused.stderr, /changed since it was trusted/);
   });
 });
 

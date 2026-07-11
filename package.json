@@ -76,6 +76,7 @@
     "CHANGELOG.md",
     "README.md",
     "ROUTING.md",
+    "SECURITY.md",
     "SPEC.md",
     "scripts/local-link.js",
     "dist"

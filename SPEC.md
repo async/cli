@@ -361,7 +361,11 @@ newline-delimited JSON-RPC 2.0, with zero runtime dependencies. It handles
 - `tools/call` captures stdout and stderr (capped at 1 MiB each) and reports
   nonzero exits as `isError: true`.
 - Commands from untrusted local overlays are excluded from `tools/list` and
-  refused at call time while trust enforcement is active.
+  refused at call time while trust enforcement is active. Trust is rechecked
+  against the resolved local overlay immediately before execution.
+- MCP stdio is a trusted-client boundary: starting the server authorizes the
+  connected client to invoke every listed command and pass arguments. The MCP
+  host owns any narrower per-call approval policy.
 
 ### Command Packs
 
@@ -464,7 +468,8 @@ overlay is refused by default — the direnv model.
 - The user-global tree is always trusted.
 - Local overlays must be trusted explicitly with `cli --trust`, which records
   a content hash of the whole overlay tree (scripts, `lib/`, everything) in
-  `.trust.json` under the user-global root.
+  `.trust.json` under the user-global root. Symlink paths and linked file or
+  directory contents are covered; cyclic directory links are rejected.
 - Any content change invalidates trust: execution fails with exit 3 until the
   user reviews and re-runs `cli --trust`.
 - `cli --trust --status` reports `trusted`, `changed`, or `untrusted` per

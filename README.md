@@ -163,7 +163,12 @@ cli --mcp              # MCP stdio server: commands become callable tools
 
 `--mcp` needs zero dependencies and exposes each non-shadowed command as a
 tool (`gh pull` becomes `gh__pull`) taking `{ "args": [...] }`. Untrusted
-overlays are excluded.
+overlays are excluded and local trust is rechecked before execution.
+
+Starting MCP mode authorizes the connected stdio client to invoke every listed
+command and pass arguments. Keep that stream local to a trusted MCP host, and
+apply any narrower tool approval policy in the host. See [SECURITY.md](./SECURITY.md)
+for the complete boundary.
 
 ## Completions
 

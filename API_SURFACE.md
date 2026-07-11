@@ -408,7 +408,10 @@ by joining words with `__` and sanitizing to `[a-zA-Z0-9_-]` (`gh pull` →
 `gh__pull`; collisions get `-2`, `-3`, ...). Each tool accepts
 `{ "args": string[] }`. Calls capture stdout/stderr (1 MiB cap each) and
 report nonzero exits as `isError: true`. Untrusted local overlays are
-excluded from listing and refused at call time.
+excluded from listing and refused at call time, with trust rechecked against
+the resolved overlay before execution. The connected stdio client is trusted
+to invoke every listed command; narrower tool approval belongs in the MCP
+host.
 
 ## Packs
 

@@ -3,7 +3,7 @@ import { createInterface } from "node:readline";
 import path from "node:path";
 import { packageInfo } from "./package-info.js";
 import { buildScriptEnv, listCommands, resolveCommand, resolveScriptCwd } from "./router.js";
-import { isTrustEnforced, overlayTrustState } from "./trust.js";
+import { ensureOverlayTrusted, isTrustEnforced, overlayTrustState } from "./trust.js";
 const protocolVersion = "2025-06-18";
 const maxOutputBytes = 1024 * 1024;
 export async function runMcpServer(options = {}, io = { input: process.stdin, output: process.stdout }) {
@@ -128,6 +128,14 @@ async function callCommand(options, command, args) {
     const callerCwd = path.resolve(options.cwd ?? process.cwd());
     const cwd = await resolveScriptCwd(resolution, callerCwd);
     const env = buildScriptEnv(resolution, callerCwd, { ...process.env, ...(options.env ?? {}) });
+    if (resolution.root.scope === "local") {
+        try {
+            await ensureOverlayTrusted(options, resolution.root.path);
+        }
+        catch (cause) {
+            return toolError(cause instanceof Error ? cause.message : String(cause));
+        }
+    }
     return await new Promise((resolve) => {
         const child = spawn(process.execPath, [resolution.script, ...resolution.argv], {
             cwd,

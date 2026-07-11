@@ -201,11 +201,14 @@ habit, execution from local overlays is gated by trust.
 - Commands from the user-global root always run.
 - Commands from a local overlay run only when that overlay is trusted:
   `cli --trust` records a content hash of the entire overlay; any change to
-  any file under it invalidates the trust; untrusted or changed overlays fail
-  with exit code 3 and a `cli --trust` hint.
+  any file under it, including linked file or directory contents, invalidates
+  the trust; cyclic directory links are rejected. Untrusted or changed
+  overlays fail with exit code 3 and a `cli --trust` hint.
 - `--list`, `--which`, `help`, completion, and `--doctor` never require trust.
   `cli <cmd>` and MCP `tools/call` always check it.
 - `ASYNC_CLI_TRUST=off` disables the gate for controlled environments.
+- MCP stdio is a trusted-client boundary. The connected client may invoke any
+  listed command; narrower per-call approval belongs in the MCP host.
 
 ## Execution contract
 
