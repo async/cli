@@ -59,6 +59,7 @@ test("--add --prefix installs the whole pack under one namespace", async () => {
 test("--add --to local installs into the project overlay and trusts it", async () => {
   await withFixture(async ({ root, project, env }) => {
     const pack = await makePack(root, { "greet/script.js": "console.log('local pack');\n" });
+    await rm(path.join(project, ".git"), { recursive: true, force: true });
 
     const added = spawnCli(["--add", pack, "--to", "local"], { cwd: project, env });
     assert.equal(added.status, 0, added.stderr);

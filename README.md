@@ -16,9 +16,9 @@ script's arguments:
 ```
 
 No registry, no config file, no argument framework. One lookup rule covers
-two trees: a repo-local `.cli/` overlay that travels with the project, and a
-user-global `~/.cli` for your personal tools. Proven commands get promoted
-from one to the other with a single command.
+local `.cli/` overlays found from the current directory up to the filesystem
+root, plus a user-global `~/.cli` for your personal tools. Proven commands get
+promoted from one to the other with a single command.
 
 Docs map: this README is the guided tour. [ROUTING.md](ROUTING.md) is the
 normative routing rules. [API_SURFACE.md](API_SURFACE.md) is the complete API
@@ -64,21 +64,21 @@ cli --trust         # approve this repo's overlay, then run normally
 The full rules with worked examples live in [ROUTING.md](ROUTING.md). The
 short version:
 
-1. Starting at your working directory, walk upward and collect every `.cli/`
-   directory, nearest first, stopping at the Git root. Append `~/.cli` last.
-2. The first tree that contains any directory matching your first words
-   captures the command — nearer beats farther, always.
-3. Inside that tree, the longest path of words with a runnable `script.*`
-   wins; leftover words become the script's argv. `--` stops word matching
-   early.
+1. Starting at your working directory, walk upward to the filesystem root and
+   collect every `.cli/` directory, nearest first. Append `~/.cli` once, last.
+2. In each tree, look for the longest runnable prefix. A namespace-only match
+   does not stop the search; the first tree with a runnable command wins.
+3. Leftover words become the script's argv. `--` stops word matching early.
 4. `help`, `lib`, `node_modules`, hidden (`.x`), and underscore-prefixed
    (`_x`) names never route, so helper code can sit next to scripts.
 
-Rule 2 is what makes overlays powerful: a repo can define `.cli/gh/script.ts`
-and take over the whole `gh ...` namespace while you work in that repo, even
-though your `~/.cli/gh/clone` exists. That is deliberate — and it is exactly
-why local overlays are trust-gated. `cli --list` marks anything shadowed,
-`cli --which` shows what was hidden.
+A runnable prefix still shadows farther commands. A local `.cli/gh/script.ts`
+takes over `gh ...` while you work below that overlay, even when
+`~/.cli/gh/clone` exists. A directory such as `.cli/gh/` with no runnable
+prefix does not block a farther `gh clone`. Local overlays remain trust-gated;
+`cli --list` marks anything shadowed and `cli --which` shows what was hidden.
+Resolution reads the current filesystem on every invocation; there is no
+command-path cache.
 
 ## Writing commands
 
@@ -108,16 +108,20 @@ worker`.
 ## Managing commands
 
 ```sh
-cli --new gh pr                 # scaffold (nearest local overlay, or --root)
+cli --new gh pr                 # nearest local overlay; otherwise ./.cli
 cli --edit gh pr                # open the script in $VISUAL / $EDITOR
 cli --rm gh pr                  # delete (nested commands require --force)
 cli --cp gh pr --to root        # copy local -> user-global
-cli --mv gh pr --to local       # move user-global -> this repo
+cli --mv gh pr --to local       # move user-global -> nearest local overlay
 ```
 
 Transfers move whole command directories, preserve the command path, refuse
 to overwrite, and warn when a script imports through `../` (such imports may
 break outside their original tree).
+
+Local destinations use the nearest existing `.cli`. If none exists, they use
+`ASYNC_CLI_PROJECT_ROOT/.cli` when configured, or `.cli` in the caller's
+working directory. Git is not required for command creation or transfers.
 
 ## Trust
 

@@ -26,6 +26,24 @@ test("untrusted local overlays refuse to run and cli --trust unlocks them", asyn
   });
 });
 
+test("ancestor overlays above a git root remain trust-gated", async () => {
+  await withFixture(async ({ home, project, env }) => {
+    await writeScript(path.join(home, ".cli", "ancestor", "script.js"), "console.log('ancestor');\n");
+
+    const refused = spawnCli(["ancestor"], { cwd: project, env });
+    assert.equal(refused.status, 3, refused.stderr);
+    assert.match(refused.stderr, /not trusted/);
+
+    const trust = spawnCli(["--trust"], { cwd: project, env });
+    assert.equal(trust.status, 0, trust.stderr);
+    assert.match(trust.stdout, /trusted .*\.cli/);
+
+    const allowed = spawnCli(["ancestor"], { cwd: project, env });
+    assert.equal(allowed.status, 0, allowed.stderr);
+    assert.match(allowed.stdout, /ancestor/);
+  });
+});
+
 test("changed overlays are refused until re-trusted", async () => {
   await withFixture(async ({ project, env }) => {
     const script = path.join(project, ".cli", "deploy", "script.js");

@@ -8,24 +8,23 @@ export { CliError } from "./errors.js";
 const scriptFiles = ["script.ts", "script.mts", "script.js", "script.mjs"];
 const ignoredNames = new Set(["help", "lib", "node_modules"]);
 export async function discoverRoots(options = {}) {
-    const env = options.env ?? process.env;
-    const cwd = path.resolve(options.cwd ?? process.cwd());
-    const home = path.resolve(options.home ?? env.HOME ?? os.homedir());
-    const globalRoot = path.resolve(env.ASYNC_CLI_GLOBAL_ROOT ?? path.join(home, ".cli"));
-    const projectRoot = env.ASYNC_CLI_PROJECT_ROOT
-        ? path.resolve(env.ASYNC_CLI_PROJECT_ROOT)
-        : await findNearestGitRoot(cwd, home);
+    const { cwd, globalRoot, projectRootOverride } = resolveDiscoveryContext(options);
     const roots = [];
-    const localDirs = projectRoot
-        ? directoriesFromCwdToRoot(cwd, projectRoot)
-        : directoriesUntilHomeOrRoot(cwd, home);
-    for (const directory of localDirs) {
+    for (const directory of directoriesToFilesystemRoot(cwd)) {
         const candidate = path.join(directory, ".cli");
         if (candidate !== globalRoot && await isDirectory(candidate)) {
-            roots.push({ path: candidate, scope: "local", projectRoot });
+            roots.push({
+                path: candidate,
+                scope: "local",
+                projectRoot: projectRootOverride ?? directory
+            });
         }
     }
-    roots.push({ path: globalRoot, scope: "root", projectRoot });
+    roots.push({
+        path: globalRoot,
+        scope: "root",
+        projectRoot: projectRootOverride ?? roots[0]?.projectRoot ?? cwd
+    });
     return dedupeRoots(roots);
 }
 export async function resolveCommand(options = {}, args) {
@@ -35,14 +34,11 @@ export async function resolveCommand(options = {}, args) {
     }
     validateCommandPath(parsed.command);
     const roots = await discoverRoots(options);
-    const candidates = await collectCandidates(roots);
+    let nearestMatch = null;
     for (const root of roots) {
-        const match = await findLongestExistingPrefix(root, parsed.command);
-        if (!match) {
-            continue;
-        }
         const candidate = await findLongestRunnablePrefix(root, parsed.command);
         if (candidate) {
+            const candidates = await collectCandidates(roots);
             return {
                 command: candidate.command,
                 script: candidate.script,
@@ -54,9 +50,13 @@ export async function resolveCommand(options = {}, args) {
                     .map((other) => other.script)
             };
         }
-        const subcommands = await listSubcommands(match.directory, match.prefix);
+        nearestMatch ??= await findLongestExistingPrefix(root, parsed.command);
+    }
+    const candidates = await collectCandidates(roots);
+    if (nearestMatch) {
+        const subcommands = await listSubcommands(nearestMatch.directory, nearestMatch.prefix);
         throw new CliError(subcommands.length > 0 ? "PARTIAL_NAMESPACE" : "UNKNOWN_COMMAND", subcommands.length > 0
-            ? `${match.prefix.join(" ")} is a command namespace, not a runnable command.`
+            ? `${nearestMatch.prefix.join(" ")} is a command namespace, not a runnable command.`
             : `Unknown command: ${parsed.command.join(" ")}`, { subcommands });
     }
     throw new CliError("UNKNOWN_COMMAND", `Unknown command: ${parsed.command.join(" ")}`, {
@@ -311,61 +311,36 @@ async function selectCreateRoot(options, roots) {
     if (existingLocal) {
         return existingLocal;
     }
-    const projectRoot = await requireProjectRoot(options);
-    return { path: path.join(projectRoot, ".cli"), scope: "local", projectRoot };
+    return defaultLocalRoot(options);
 }
 async function selectLocalRootForMove(options, roots) {
-    const projectRoot = await requireProjectRoot(options);
-    const existing = roots.find((root) => root.scope === "local" && root.path === path.join(projectRoot, ".cli"));
-    return existing ?? { path: path.join(projectRoot, ".cli"), scope: "local", projectRoot };
+    return roots.find((root) => root.scope === "local") ?? defaultLocalRoot(options);
 }
-async function requireProjectRoot(options) {
+function defaultLocalRoot(options) {
+    const { cwd, projectRootOverride } = resolveDiscoveryContext(options);
+    const projectRoot = projectRootOverride ?? cwd;
+    return { path: path.join(projectRoot, ".cli"), scope: "local", projectRoot };
+}
+function resolveDiscoveryContext(options) {
     const env = options.env ?? process.env;
     const cwd = path.resolve(options.cwd ?? process.cwd());
     const home = path.resolve(options.home ?? env.HOME ?? os.homedir());
-    const projectRoot = env.ASYNC_CLI_PROJECT_ROOT
-        ? path.resolve(env.ASYNC_CLI_PROJECT_ROOT)
-        : await findNearestGitRoot(cwd, home);
-    if (!projectRoot) {
-        throw new CliError("MISSING_GIT_ROOT", "No Git root found. Use --root for the user-global command tree.");
-    }
-    return projectRoot;
+    return {
+        cwd,
+        globalRoot: path.resolve(env.ASYNC_CLI_GLOBAL_ROOT ?? path.join(home, ".cli")),
+        projectRootOverride: env.ASYNC_CLI_PROJECT_ROOT ? path.resolve(env.ASYNC_CLI_PROJECT_ROOT) : null
+    };
 }
-async function findNearestGitRoot(cwd, home) {
-    for (const directory of directoriesUntilHomeOrRoot(cwd, home)) {
-        if (await pathExists(path.join(directory, ".git"))) {
-            return directory;
-        }
-    }
-    return null;
-}
-function directoriesFromCwdToRoot(cwd, root) {
+function directoriesToFilesystemRoot(cwd) {
     const directories = [];
     let current = path.resolve(cwd);
-    const resolvedRoot = path.resolve(root);
-    if (!isInsideOrEqual(current, resolvedRoot)) {
-        return [resolvedRoot];
-    }
     while (true) {
         directories.push(current);
-        if (current === resolvedRoot) {
+        const parent = path.dirname(current);
+        if (parent === current) {
             return directories;
         }
-        current = path.dirname(current);
-    }
-}
-function directoriesUntilHomeOrRoot(cwd, home) {
-    const directories = [];
-    let current = path.resolve(cwd);
-    const resolvedHome = path.resolve(home);
-    while (true) {
-        if (current !== resolvedHome) {
-            directories.push(current);
-        }
-        if (current === resolvedHome || current === path.dirname(current)) {
-            return directories;
-        }
-        current = path.dirname(current);
+        current = parent;
     }
 }
 function dedupeRoots(roots) {

@@ -51,18 +51,18 @@ order:
    for the binary).
 2. Walk upward one directory at a time. Every directory that contains a
    `.cli/` directory contributes a local overlay, nearest first.
-3. Stop the walk after the nearest ancestor that contains `.git` (the project
-   root). If no project root exists, walk until `$HOME` or the filesystem
-   root, whichever comes first.
-4. `~/.cli` is never collected by the walk, even when the walk passes through
-   `$HOME`.
+3. Continue to the filesystem root. Git repositories and the home directory
+   do not bound command discovery.
+4. The configured user-global root is never collected as a local overlay,
+   even when the walk passes through it.
 5. Append the user-global root exactly once, last.
 6. Drop duplicate paths, keeping the first occurrence.
 
 Example. With this layout:
 
 ```text
-~/work/app/.cli/            <- project root (~/work/app has .git)
+~/work/.cli/
+~/work/app/.cli/
 ~/work/app/packages/web/.cli/
 ~/.cli/
 ```
@@ -72,21 +72,38 @@ running `cli` from `~/work/app/packages/web/src` discovers, in order:
 ```text
 1. ~/work/app/packages/web/.cli   (local)
 2. ~/work/app/.cli                (local)
-3. ~/.cli                         (root)
+3. ~/work/.cli                    (local)
+4. ~/.cli                         (root)
 ```
 
-Order is precedence: 1 beats 2 beats 3.
+Order is precedence: 1 beats 2 beats 3 beats 4.
 
 ### Environment overrides
 
 | Variable | Effect |
 | --- | --- |
 | `ASYNC_CLI_GLOBAL_ROOT` | Replaces `~/.cli` as the user-global root |
-| `ASYNC_CLI_PROJECT_ROOT` | Pins the project root instead of searching for `.git` |
+| `ASYNC_CLI_PROJECT_ROOT` | Overrides project context and the fallback target for local writes; it does not bound discovery |
 | `ASYNC_CLI_TRUST` | `off` disables trust enforcement |
 
 The first two exist for tests and controlled launchers; most setups never set
 them.
+
+### Project context and local write targets
+
+`CommandRoot.projectRoot`, the `project-root` cwd pragma, and
+`CLI_PROJECT_ROOT` use `ASYNC_CLI_PROJECT_ROOT` when it is set. Without the
+override, a selected local command uses the directory that owns its `.cli`.
+A selected user-global command uses the nearest discovered local owner, or the
+caller's working directory when there is no local overlay.
+
+Local lifecycle destinations (`--new`, `--cp --to local`, `--mv --to local`,
+and `--add --to local`) use the nearest existing local `.cli`. When none
+exists, they use `ASYNC_CLI_PROJECT_ROOT/.cli` or the caller's `.cli`.
+
+Only the `--agents` context-file subsystem, including its doctor audit, searches
+for a Git repository root. Git does not affect command discovery, project
+context, or local lifecycle destinations.
 
 ## Ignored segments
 
@@ -122,27 +139,26 @@ is routable, `_foo` is not.
    anything containing `/` or `\`, ignored names (`help`, `lib`,
    `node_modules`), hidden names (`.x`), and leading-underscore names (`_x`)
    are rejected before the filesystem is touched.
-3. Visit command roots in discovery order. The first root that contains any
-   directory prefix of the command words captures the command. Later roots
-   are not consulted, even if they hold a longer or "better" match. This is
-   the first-overlay-wins rule.
-4. Inside the capturing root, select the longest prefix of the command words
-   whose directory contains a runnable `script.*`. Shorter runnable prefixes
-   lose to longer ones within the same root.
+3. Visit command roots in discovery order. Inside each root, select the
+   longest prefix of the command words whose directory contains a runnable
+   `script.*`.
+4. Stop at the first root with a runnable prefix. A root that contains only
+   matching namespace directories does not capture the request; continue to
+   the next root.
 5. Words beyond the selected prefix, plus everything after `--`, become the
    script's argv in that order.
-6. If the capturing root has matching directories but no runnable script along
-   the prefix, resolution fails: with subdirectories it is a partial-namespace
-   error listing the available subcommands; without them it is an unknown
-   command.
-7. If no root captures, the command is unknown; the error suggests up to five
-   near matches by first word.
-8. A command directory with two or more `script.*` files is ambiguous and
+6. If no root has a runnable prefix, the nearest matching namespace produces a
+   partial-namespace error with its available subcommands. With no useful
+   namespace match, the command is unknown and suggests up to five near
+   matches by first word.
+7. A command directory with two or more `script.*` files is ambiguous and
    fails, listing the conflicting files. Ambiguity is never resolved by
    extension priority.
-9. Before execution (and only execution — inspection is always allowed), the
+8. Before execution (and only execution — inspection is always allowed), the
    trust gate applies: scripts selected from a `local` root run only if that
    overlay is trusted (see Trust below).
+9. Resolution reads the filesystem on every invocation. There is no
+   persistent or time-based command-path cache.
 
 ### Worked examples
 
@@ -150,7 +166,9 @@ Layout:
 
 ```text
 ~/work/app/.cli/gh/script.ts             (project overlay)
+~/work/app/.cli/release/                 (namespace only)
 ~/.cli/gh/clone/script.ts                (user-global)
+~/.cli/release/notes/script.ts           (user-global)
 ~/.cli/deploy/script.js                  (user-global)
 ```
 
@@ -159,17 +177,19 @@ From inside `~/work/app`:
 | Invocation | Result |
 | --- | --- |
 | `cli gh clone x` | Runs local `gh` with argv `["clone", "x"]` |
+| `cli release notes` | Runs global `release notes`; the local namespace has no runnable prefix |
 | `cli deploy` | Runs global `deploy` (no local `deploy` prefix exists) |
 | `cli gh -- --list` | Runs local `gh` with argv `["--list"]` |
 | `cli ghx` | Unknown command; suggests `gh` |
 
-The first row is the important one. The local overlay contains the directory
-`gh`, so it captures every command starting with `gh` — including `gh clone`,
-which only exists as a runnable script in the global tree. The local `gh`
-script receives `clone x` as arguments. The global `gh clone` is shadowed.
+The first row is the important runnable-prefix case. The local `gh` script
+matches before the global `gh clone`, so it receives `clone x` as arguments
+and shadows the global command. The second row shows the opposite case: a
+namespace directory without a script does not block a runnable command in a
+farther root.
 
-From outside any project, `cli gh clone x` runs the global `~/.cli/gh/clone`
-script with argv `["x"]` — nothing shadows it there.
+With no local `.cli` ancestor, `cli gh clone x` runs the global
+`~/.cli/gh/clone` script with argv `["x"]` — nothing shadows it there.
 
 ## Shadowing
 
@@ -177,12 +197,12 @@ Shadowing is deliberate: a repo can override your personal command with a
 project-specific version by defining the same path (or any prefix of it)
 closer to the caller.
 
-- A nearer overlay shadows farther overlays and the global root for the whole
-  namespace it captures, even where the nearer tree is shallower.
+- A nearer runnable prefix shadows farther overlays and the global root, even
+  where the nearer command is shallower.
 - Within one root, deeper runnable prefixes win; across roots, nearer roots
   win. Nearness beats depth.
-- Nothing is merged. Namespaces do not union across roots; the capturing root
-  is authoritative for everything under the captured prefix.
+- Namespace-only directories do not shadow. Separate runnable branches may
+  therefore resolve from different roots beneath the same namespace.
 
 Shadowing is always visible:
 
@@ -230,9 +250,9 @@ Injected environment:
 | Variable | Value |
 | --- | --- |
 | `CLI_SCRIPT` | Absolute path of the running script |
-| `CLI_ROOT` | Command root that captured the command |
+| `CLI_ROOT` | Command root that selected the command |
 | `CLI_SCOPE` | `local` or `root` |
-| `CLI_PROJECT_ROOT` | Project root, or empty string outside a repo |
+| `CLI_PROJECT_ROOT` | Explicit override; otherwise the selected local overlay owner, or for a global command the nearest local owner then caller cwd |
 | `CLI_COMMAND` | The matched command words, space-joined |
 | `CLI_CALLER_CWD` | The caller's working directory, regardless of pragma |
 
@@ -241,13 +261,14 @@ Injected environment:
 1. Words map to directories; a directory with exactly one `script.*` is a
    command.
 2. Roots are searched nearest-local first, user-global last.
-3. The first root containing any prefix directory captures the command
-   entirely.
-4. Within the capturing root, the longest runnable prefix wins.
+3. Namespace-only matches fall through to later roots.
+4. The first root with a runnable prefix wins; within it, the longest runnable
+   prefix wins.
 5. Leftover words plus `--`-forwarded words become the script's argv.
 6. `help`, `lib`, `node_modules`, `.x`, and `_x` never route.
 7. Two `script.*` files in one directory is an error, never a preference.
-8. Nearness beats depth; nothing merges across roots.
+8. Nearness beats depth once a runnable prefix exists.
 9. Local overlays need `cli --trust` to execute; the global root does not.
 10. Everything above is inspectable without running anything: `--list`,
     `--which`, `--doctor`.
+11. Every invocation reads the live filesystem; no command-path cache is used.

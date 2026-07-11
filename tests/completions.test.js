@@ -49,6 +49,16 @@ test("--complete hides shadowed commands", async () => {
   });
 });
 
+test("--complete includes farther commands behind namespace-only overlays", async () => {
+  await withFixture(async ({ project, globalRoot, env }) => {
+    await writeScript(path.join(project, ".cli", "gh", "status", "script.js"));
+    await writeScript(path.join(globalRoot, "gh", "clone", "script.js"));
+
+    const result = spawnCli(["--complete", "--", "gh", "cl"], { cwd: project, env });
+    assert.deepEqual(lines(result.stdout), ["clone"]);
+  });
+});
+
 test("--completions emits shell scripts", async () => {
   await withFixture(async ({ project, env }) => {
     const bash = spawnCli(["--completions", "bash"], { cwd: project, env });

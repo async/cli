@@ -74,11 +74,11 @@ class CliError extends Error {
 
 | Code | Meaning | Exit |
 | --- | --- | --- |
-| `UNKNOWN_COMMAND` | No root captured the words; `suggestions` may help | 2 |
+| `UNKNOWN_COMMAND` | No root has a runnable prefix; `suggestions` may help | 2 |
 | `PARTIAL_NAMESPACE` | Prefix exists but is not runnable; see `subcommands` | 2 |
 | `AMBIGUOUS_SCRIPT` | More than one `script.*` in a directory; see `files` | 2 |
 | `UNSAFE_SEGMENT` | Rejected command word, template name, or prefix | 2 |
-| `MISSING_GIT_ROOT` | Operation needs a project root and none was found | 2 |
+| `MISSING_GIT_ROOT` | Context-file placement needs a Git root and none was found | 2 |
 | `TARGET_EXISTS` | Refusing to overwrite; `--force`-gated where supported | 2 |
 | `SOURCE_NOT_FOUND` | No matching command directory to act on | 2 |
 | `UNTRUSTED_OVERLAY` | Execution blocked by the trust gate | 3 |
@@ -95,7 +95,7 @@ class CliError extends Error {
 interface CommandRoot {
   path: string;                  // absolute path of the command tree
   scope: "local" | "root";       // overlay vs user-global
-  projectRoot: string | null;    // discovered Git root, if any
+  projectRoot: string | null;    // explicit override or overlay-derived context
 }
 
 interface CommandEntry {
@@ -117,7 +117,7 @@ interface CommandResolution {
   command: string[];             // matched command words
   script: string;                // selected script
   argv: string[];                // words the script will receive
-  root: CommandRoot;             // capturing root
+  root: CommandRoot;             // root that selected the command
   shadows: string[];             // scripts hidden by this selection
 }
 ```
@@ -131,8 +131,14 @@ discoverRoots(options?: DiscoverRootsOptions): Promise<CommandRoot[]>
 ```
 
 Returns command roots in precedence order: local overlays nearest-first from
-`cwd` up to the project root, then the user-global root exactly once. Pure
-discovery — never throws for missing directories.
+`cwd` through the filesystem root, then the configured user-global root
+exactly once. The global root is excluded from the local walk even when it is
+an ancestor. Pure discovery — never throws for missing directories and never
+consults `.git`.
+
+For a local root, `projectRoot` is `ASYNC_CLI_PROJECT_ROOT` when set, otherwise
+the directory that owns `.cli`. For the global root it is the override,
+otherwise the nearest local owner, then `cwd`.
 
 ### `listCommands(options?)`
 
@@ -171,9 +177,12 @@ multiple `script.*` files.
 resolveCommand(options: ResolveCommandOptions, args: string[]): Promise<CommandResolution>
 ```
 
-Applies the routing rules (first-overlay-wins, longest runnable prefix, `--`
-forwarding) without executing anything and without checking trust. Use it for
-"what would run?" tooling; `cli --which` is a thin wrapper.
+Applies the routing rules (nearest root with a runnable prefix, longest
+runnable prefix within that root, `--` forwarding) without executing anything
+and without checking trust. Namespace-only matches fall through to later
+roots. Resolution reads the live filesystem every time; there is no persistent
+or time-based command-path cache. Use it for "what would run?" tooling;
+`cli --which` is a thin wrapper.
 
 Throws `UNKNOWN_COMMAND`, `PARTIAL_NAMESPACE`, `AMBIGUOUS_SCRIPT`, or
 `UNSAFE_SEGMENT`.
@@ -211,7 +220,7 @@ the child. The script's working directory honors its `// cli-cwd:` pragma;
 environment.
 
 Throws everything `resolveCommand` throws, plus `UNTRUSTED_OVERLAY` (exit
-code 3) when the capturing overlay is local and not trusted, and
+code 3) when the selected overlay is local and not trusted, and
 `INVALID_ARGS` for an unknown `cli-cwd` pragma value.
 
 ### `executeResolution(resolution, options?)`
@@ -235,7 +244,8 @@ resolveScriptCwd(resolution: CommandResolution, callerCwd: string): Promise<stri
 `readCwdPragma` scans the first 16 lines for `// cli-cwd: <mode>` and returns
 `"caller"` when absent; unknown values throw `INVALID_ARGS`.
 `resolveScriptCwd` turns the pragma into an absolute directory
-(`project-root` falls back to `callerCwd` outside a repo).
+(`project-root` uses the explicit override, selected local overlay owner, or
+for a global command the nearest local owner then `callerCwd`).
 
 ## Authoring and lifecycle
 
@@ -252,15 +262,14 @@ interface CreateCommandResult {
 createCommand(options: CreateCommandOptions, commandPath: string[]): Promise<CreateCommandResult>
 ```
 
-Target selection under `"auto"`: the nearest existing local overlay, else the
-project root's `.cli`; outside a repo this throws `MISSING_GIT_ROOT` (pass
-`root: "root"` for the user-global tree). Default scaffold writes
-`script.ts`. With `template`, `_templates/<name>/` is searched across roots
-nearest-local first and copied verbatim; the copy must yield exactly one
-top-level `script.*`.
+Target selection under `"auto"`: the nearest existing local overlay; when none
+exists, `ASYNC_CLI_PROJECT_ROOT/.cli` or `cwd/.cli`. Pass `root: "root"` for
+the user-global tree. Default scaffold writes `script.ts`. With `template`,
+`_templates/<name>/` is searched across roots nearest-local first and copied
+verbatim; the copy must yield exactly one top-level `script.*`.
 
-Throws `UNSAFE_SEGMENT`, `TARGET_EXISTS`, `MISSING_GIT_ROOT`,
-`TEMPLATE_NOT_FOUND` (with `suggestions`), `TEMPLATE_INVALID`.
+Throws `UNSAFE_SEGMENT`, `TARGET_EXISTS`, `TEMPLATE_NOT_FOUND` (with
+`suggestions`), `TEMPLATE_INVALID`.
 
 ### `removeCommand(options?, commandPath)`
 
@@ -298,8 +307,10 @@ are not carried along; `warnings` flags scripts importing through `../`,
 which may not survive the transfer. `moveCommand` additionally prunes empty
 source parents.
 
-Throws `UNSAFE_SEGMENT`, `SOURCE_NOT_FOUND`, `TARGET_EXISTS`,
-`MISSING_GIT_ROOT` (for `to: "local"` outside a repo).
+For `to: "local"`, the destination is the nearest existing local overlay;
+when none exists, `ASYNC_CLI_PROJECT_ROOT/.cli` or `cwd/.cli`.
+
+Throws `UNSAFE_SEGMENT`, `SOURCE_NOT_FOUND`, `TARGET_EXISTS`.
 
 ### `findRunnableScript(directory)`
 
@@ -325,9 +336,10 @@ of `discoverRoots`).
 resolveScopedRoot(options: DiscoverRootsOptions, scope: "root" | "local"): Promise<CommandRoot>
 ```
 
-The user-global root, or the project's `.cli` (existing or would-be —
-`MISSING_GIT_ROOT` outside a repo). Useful for computing install targets the
-same way `--cp`, `--mv`, and `--add` do.
+The user-global root, or the nearest existing local `.cli`. When no local root
+exists, the local result is `ASYNC_CLI_PROJECT_ROOT/.cli` or `cwd/.cli`.
+Useful for computing install targets the same way `--cp`, `--mv`, and `--add`
+do.
 
 ## Trust
 
@@ -435,7 +447,8 @@ all-or-nothing before anything is copied. The temp clone is always removed.
 Throws `INVALID_ARGS`, `UNSAFE_SEGMENT` (bad prefix), `GIT_FAILED`,
 `PACK_INVALID` (no `.cli/`, nothing installable, or a root-level command
 without `prefix`), `TARGET_EXISTS` (with conflicting paths in `files`),
-`MISSING_GIT_ROOT` (for `to: "local"` outside a repo).
+and clone-related I/O failures. For `to: "local"`, target selection follows
+`resolveScopedRoot` and does not require Git.
 
 Note: `addPack` does not record trust. The `cli --add --to local` command
 layers that on as an explicit consent action.
@@ -478,7 +491,7 @@ renderHelp(commands?: string[]): string  // the "cli help" text
 | Variable | Read by | Effect |
 | --- | --- | --- |
 | `ASYNC_CLI_GLOBAL_ROOT` | discovery, trust store | Replaces `~/.cli` |
-| `ASYNC_CLI_PROJECT_ROOT` | discovery | Pins the project root |
+| `ASYNC_CLI_PROJECT_ROOT` | project context, local write targets | Overrides `projectRoot` and the no-overlay local fallback; does not bound discovery |
 | `ASYNC_CLI_TRUST` | trust gate | `off` disables enforcement |
 | `VISUAL`, `EDITOR` | `cli --edit` | Editor command (first non-empty wins) |
 | `CLI_*` | injected into scripts | See ROUTING.md |

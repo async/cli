@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { managedAgentsBlock } from "./agents.js";
+import { findContextRoot, managedAgentsBlock } from "./agents.js";
 import { CliError } from "./errors.js";
 import {
   discoverRoots,
@@ -40,7 +40,7 @@ export async function runDoctor(options: DiscoverRootsOptions = {}): Promise<Doc
 
   await auditShadows(options, problems);
   await auditTrust(options, env, problems);
-  await auditAgentsPointer(roots.find((root) => root.scope === "local")?.projectRoot ?? null, problems);
+  await auditAgentsPointer(await findContextRoot(options), problems);
 
   const summary = {
     errors: problems.filter((problem) => problem.severity === "error").length,

@@ -87,12 +87,15 @@ function parseAgentsArgs(args: string[]): ParsedAgentsArgs {
 }
 
 async function resolveContextTarget(claude: boolean, options: AgentsOptions): Promise<string> {
-  const root = await findGitRoot(options);
+  const root = await findContextRoot(options);
+  if (!root) {
+    throw new CliError("MISSING_GIT_ROOT", "No Git root found for the selected context file.");
+  }
   const file = claude ? "CLAUDE.md" : "AGENTS.md";
   return path.join(root, file);
 }
 
-async function findGitRoot(options: AgentsOptions): Promise<string> {
+export async function findContextRoot(options: AgentsOptions = {}): Promise<string | null> {
   const env = options.env ?? process.env;
   if (env.ASYNC_CLI_PROJECT_ROOT) {
     return path.resolve(env.ASYNC_CLI_PROJECT_ROOT);
@@ -106,7 +109,7 @@ async function findGitRoot(options: AgentsOptions): Promise<string> {
       return current;
     }
     if (current === home || current === path.dirname(current)) {
-      throw new CliError("MISSING_GIT_ROOT", "No Git root found for the selected context file.");
+      return null;
     }
     current = path.dirname(current);
   }

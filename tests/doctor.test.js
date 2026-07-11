@@ -65,6 +65,20 @@ test("--doctor is clean on a healthy trusted tree", async () => {
   });
 });
 
+test("--doctor keeps AGENTS checks at the git context for nested overlays", async () => {
+  await withFixture(async ({ project, env }) => {
+    const cwd = path.join(project, "packages", "app");
+    await writeScript(path.join(cwd, ".cli", "fine", "script.js"), "// cli: fine\nconsole.log('fine');\n");
+    assert.equal(spawnCli(["--trust"], { cwd, env }).status, 0);
+    assert.equal(spawnCli(["--agents", "--write"], { cwd, env }).status, 0);
+
+    const result = spawnCli(["--doctor", "--json"], { cwd, env });
+    assert.equal(result.status, 0, result.stdout);
+    const report = JSON.parse(result.stdout);
+    assert.ok(!report.problems.some((problem) => problem.code === "agents-missing"));
+  });
+});
+
 async function withFixture(fn) {
   const root = await realpath(await mkdtemp(path.join(os.tmpdir(), "async-cli-doctor-")));
   const home = path.join(root, "home");

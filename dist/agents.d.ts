@@ -5,5 +5,6 @@ interface AgentsOptions {
     env?: NodeJS.ProcessEnv;
 }
 export declare function handleAgentsCommand(args: string[], io: CliIo, options?: AgentsOptions): Promise<number>;
+export declare function findContextRoot(options?: AgentsOptions): Promise<string | null>;
 export {};
 //# sourceMappingURL=agents.d.ts.map

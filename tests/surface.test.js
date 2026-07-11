@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { discoverRoots } from "../dist/index.js";
+
 const cliPath = path.resolve("dist/cli.js");
 
 test("--edit opens the resolved script in $EDITOR", async () => {
@@ -134,6 +136,46 @@ test("cli-cwd pragma controls the script working directory", async () => {
     const broken = spawnCli(["broken"], { cwd, env });
     assert.equal(broken.status, 2);
     assert.match(broken.stderr, /Unknown cli-cwd value/);
+  });
+});
+
+test("global project-root uses the nearest local overlay owner or caller cwd", async () => {
+  await withFixture(async ({ project, cwd, globalRoot, env }) => {
+    await mkdir(path.join(project, ".cli"), { recursive: true });
+    await writeScript(
+      path.join(globalRoot, "rooted", "script.js"),
+      "// cli-cwd: project-root\nconsole.log(JSON.stringify({ cwd: process.cwd(), project: process.env.CLI_PROJECT_ROOT }));\n"
+    );
+
+    const contextual = spawnCli(["rooted"], { cwd, env });
+    assert.equal(contextual.status, 0, contextual.stderr);
+    assert.deepEqual(JSON.parse(contextual.stdout), { cwd: project, project });
+
+    await rm(path.join(project, ".cli"), { recursive: true, force: true });
+    const caller = spawnCli(["rooted"], { cwd, env });
+    assert.equal(caller.status, 0, caller.stderr);
+    assert.deepEqual(JSON.parse(caller.stdout), { cwd, project: cwd });
+  });
+});
+
+test("ASYNC_CLI_PROJECT_ROOT overrides script context without bounding discovery", async () => {
+  await withFixture(async ({ root, home, project, cwd, globalRoot, env }) => {
+    const override = path.join(root, "context-root");
+    await mkdir(override, { recursive: true });
+    await writeScript(path.join(home, ".cli", "ancestor", "script.js"));
+    await writeScript(
+      path.join(globalRoot, "rooted", "script.js"),
+      "// cli-cwd: project-root\nconsole.log(process.cwd());\n"
+    );
+    const overriddenEnv = { ...env, ASYNC_CLI_PROJECT_ROOT: override };
+
+    const roots = await discoverRoots({ cwd, env: overriddenEnv });
+    assert.ok(roots.some((entry) => entry.path === path.join(home, ".cli")));
+    assert.ok(roots.every((entry) => entry.projectRoot === override));
+
+    const result = spawnCli(["rooted"], { cwd, env: overriddenEnv });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), override);
   });
 });
 

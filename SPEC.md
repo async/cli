@@ -41,13 +41,18 @@ contains exactly one `script.{ts,mts,js,mjs}` file.
 
 - Start from the caller's current working directory.
 - Walk upward collecting `.cli/` directories, nearest first.
-- Stop after the nearest ancestor containing `.git`.
-- If no Git root exists, walk only until `$HOME` or filesystem root.
-- Never collect `~/.cli` during upward local discovery.
+- Continue through the caller's home directory to the filesystem root. Git
+  repositories do not bound command discovery.
+- Never collect the configured user-global root during upward local discovery.
 - Append `~/.cli` exactly once as the root command tree.
 - Allow `ASYNC_CLI_GLOBAL_ROOT` to replace `~/.cli` for tests and advanced use.
-- Allow `ASYNC_CLI_PROJECT_ROOT` to replace discovered Git-root behavior for
-  tests and controlled launchers.
+- Allow `ASYNC_CLI_PROJECT_ROOT` to override script project context and the
+  fallback destination for local writes. It does not bound discovery.
+
+Each local `CommandRoot.projectRoot` is the explicit override when set,
+otherwise the directory that owns that `.cli`. The user-global root uses the
+override, otherwise the nearest local owner, then the caller's working
+directory.
 
 Ignored path segments during discovery, routing, help, listing, and suggestions:
 
@@ -72,17 +77,19 @@ valid command segments.
 ### Command Resolution
 
 - Command words map to nested directories.
-- Resolution uses the longest matching command prefix inside the first overlay
-  that has any match.
-- A nearer local match shadows parent and root matches, even if the shadowed
-  command is deeper.
-- If no local overlay matches the command path, fall back to the root command
-  tree.
+- In each root, resolution uses the longest runnable command prefix.
+- A matching namespace with no runnable prefix does not capture the request;
+  search continues to the next root.
+- The first root with a runnable prefix wins. A nearer runnable command shadows
+  parent and root matches, even if the shadowed command is deeper.
+- If no local overlay has a runnable prefix, fall back to the root command tree.
 - Remaining arguments are forwarded unchanged to the script.
 - `--` ends command routing early and forwards everything after it.
 - Multiple `script.*` files in one command directory fail as ambiguous.
 - `--list` and `--which` show all shadowing layers, including nested local
   overlays.
+- Resolution reads the live filesystem on every invocation. There is no
+  persistent or time-based command-path cache.
 
 Example:
 
@@ -97,7 +104,8 @@ command: gh pull
 script argv: ["123", "--rebase"]
 ```
 
-Namespace shadowing is deliberate. If local `.cli/gh/script.ts` exists, then:
+Runnable-prefix shadowing is deliberate. If local `.cli/gh/script.ts` exists,
+then:
 
 ```sh
 cli gh clone x
@@ -110,6 +118,9 @@ runs the local `gh` command with:
 ```
 
 even when `~/.cli/gh/clone/script.ts` exists.
+
+By contrast, a local `.cli/gh/` directory without a runnable prefix does not
+block the global `gh clone` command.
 
 ### Script Contract
 
@@ -149,8 +160,9 @@ directory:
 Values:
 
 - `caller` (default): the caller's original working directory.
-- `project-root`: the discovered Git root; falls back to the caller's working
-  directory outside a repo.
+- `project-root`: `ASYNC_CLI_PROJECT_ROOT` when set; otherwise the selected
+  local overlay's owning directory. For a global command, use the nearest
+  local overlay owner, then the caller's working directory.
 - `script-dir`: the command directory containing the script.
 
 Unknown values fail with an actionable error. `CLI_CALLER_CWD` always carries
@@ -165,7 +177,7 @@ If the first line of `script.*` is a comment of the form:
 ```
 
 the one-line description appears in `help`, `--list`, `--list --json`, and the
-managed agent pointer output. Missing descriptions are represented as empty
+managed context pointer output. Missing descriptions are represented as empty
 strings in JSON.
 
 ### Built-In Commands
@@ -222,12 +234,12 @@ cli --version
 - `cli --cp <cmd...> --to root` copies the nearest matching local command
   directory into the root command tree.
 - `cli --cp <cmd...> --to local` copies a root command directory into the
-  current Git root's `.cli`.
+  nearest existing local `.cli`, or the local fallback target.
 - `cli --mv <cmd...>` defaults to `--to root`.
 - `cli --mv <cmd...> --to root` moves the nearest matching local command
   directory into the root command tree.
 - `cli --mv <cmd...> --to local` moves a root command directory into the
-  current Git root's `.cli`.
+  nearest existing local `.cli`, or the local fallback target.
 - `cli --edit <cmd...>` opens the resolved script in `$VISUAL` or `$EDITOR`
   (falling back to `vi`).
 - `cli --rm <cmd...>` removes the whole command directory from the nearest
@@ -245,8 +257,12 @@ cli --version
 `--new` target selection:
 
 - Use the nearest existing local `.cli` if one exists.
-- Otherwise create under the Git root `.cli`.
-- Outside a Git repo, require `--root`.
+- Otherwise create under `ASYNC_CLI_PROJECT_ROOT/.cli` when the override is
+  set, or under the caller's `.cli`.
+- `--root` explicitly selects the user-global tree.
+
+The same local target selection applies to `--cp --to local`,
+`--mv --to local`, and `--add --to local`.
 
 ### Templates
 
@@ -287,8 +303,10 @@ Copy rules:
 discover and prefer them over ad-hoc equivalents. The committed pointer block is
 how repo context files tell tools that the live command tree exists.
 
-Default target is the repo root `AGENTS.md`. `--claude` explicitly targets
-`CLAUDE.md`. There is no arbitrary file target in v1.
+Default target is the Git repository root `AGENTS.md`. `--claude` explicitly
+targets `CLAUDE.md`. Context-file placement is the only feature that searches
+for a `.git` boundary; its doctor audit reuses that lookup. Command discovery
+and local write selection do not. There is no arbitrary file target in v1.
 
 ```sh
 cli --agents
@@ -384,12 +402,14 @@ commands from another repository:
 - Existing target directories are refused unless `--force`, which replaces
   them whole.
 - The default target is the user-global tree. `--to local` installs into the
-  current Git root's `.cli` and records trust for that overlay, since the
-  install is an explicit consent action.
+  nearest existing local `.cli`; when none exists, it uses
+  `ASYNC_CLI_PROJECT_ROOT/.cli` or the caller's `.cli`. It records trust for
+  that overlay, since the install is an explicit consent action.
 
 ### Machine-Readable Listing
 
-`cli --list --json` is the stable programmatic surface:
+`cli --list --json` is the stable machine-discovery surface. It inspects the
+live filesystem without executing commands or requiring overlay trust:
 
 ```json
 {
@@ -448,9 +468,8 @@ ASYNC_CLI_TRUST        (set to "off" to disable trust enforcement)
 - Unsafe path segment in routing, `--new`, `--rm`, `--cp`, `--mv`, or
   `--add --prefix`: reject empty segments, `.`, `..`, absolute paths, path
   separators, ignored names, hidden segments, and leading-underscore segments.
-- No Git root for `--new` without `--root`, `--rm` without `--root`,
-  `--cp --to local`, `--mv --to local`, or `--add --to local`: print an
-  actionable message.
+- No Git root for `--agents`: print an actionable message. Git is not required
+  for command discovery or local lifecycle destinations.
 - Untrusted or changed local overlay at execution time: exit 3 with a
   `cli --trust` hint.
 - Missing template: exit nonzero listing available template names.

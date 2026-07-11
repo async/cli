@@ -17,19 +17,24 @@ import {
 
 const cliPath = path.resolve("dist/cli.js");
 
-test("discoverRoots collects nearest local overlays, stops at git root, and appends global once", async () => {
-  await withFixture(async ({ project, cwd, globalRoot, env }) => {
+test("discoverRoots walks ancestor overlays past git and appends global once", async () => {
+  await withFixture(async ({ home, project, cwd, globalRoot, env }) => {
+    await mkdir(path.join(home, ".cli"), { recursive: true });
     await mkdir(path.join(project, ".cli"), { recursive: true });
     await mkdir(path.join(cwd, ".cli"), { recursive: true });
 
     const roots = await discoverRoots({ cwd, env });
 
-    assert.deepEqual(roots.map((root) => root.path), [
+    assert.deepEqual(roots.slice(0, 3).map((root) => root.path), [
       path.join(cwd, ".cli"),
       path.join(project, ".cli"),
-      globalRoot
+      path.join(home, ".cli")
     ]);
-    assert.deepEqual(roots.map((root) => root.scope), ["local", "local", "root"]);
+    assert.deepEqual(roots.slice(0, 3).map((root) => root.scope), ["local", "local", "local"]);
+    assert.equal(roots.at(-1)?.path, globalRoot);
+    assert.equal(roots.at(-1)?.scope, "root");
+    assert.deepEqual(roots.slice(0, 3).map((root) => root.projectRoot), [cwd, project, home]);
+    assert.equal(roots.at(-1)?.projectRoot, cwd);
   });
 });
 
@@ -67,6 +72,20 @@ test("resolveCommand applies first-overlay longest-prefix namespace shadowing", 
     assert.equal(resolution.script, path.join(project, ".cli", "gh", "script.js"));
     assert.deepEqual(resolution.argv, ["clone", "repo"]);
     assert.deepEqual(resolution.shadows, [path.join(globalRoot, "gh", "clone", "script.js")]);
+  });
+});
+
+test("resolveCommand continues past namespace-only overlays", async () => {
+  await withFixture(async ({ project, globalRoot, env }) => {
+    await writeScript(path.join(project, ".cli", "gh", "status", "script.js"));
+    await writeScript(path.join(globalRoot, "gh", "clone", "script.js"));
+
+    const resolution = await resolveCommand({ cwd: project, env }, ["gh", "clone", "repo"]);
+
+    assert.equal(resolution.command.join(" "), "gh clone");
+    assert.equal(resolution.script, path.join(globalRoot, "gh", "clone", "script.js"));
+    assert.deepEqual(resolution.argv, ["repo"]);
+    assert.deepEqual(resolution.shadows, []);
   });
 });
 
@@ -142,6 +161,7 @@ test("--list --json and --which expose selected and shadowed layers", async () =
 test("--new creates script.ts under the nearest local overlay and rejects unsafe segments", async () => {
   await withFixture(async ({ project, cwd, env }) => {
     await mkdir(path.join(project, ".cli"), { recursive: true });
+    await rm(path.join(project, ".git"), { recursive: true, force: true });
 
     const result = spawnCli(["--new", "ops", "deploy"], { cwd, env });
     assert.equal(result.status, 0, result.stderr);
@@ -150,6 +170,32 @@ test("--new creates script.ts under the nearest local overlay and rejects unsafe
     const rejected = spawnCli(["--new", "_private"], { cwd, env });
     assert.equal(rejected.status, 2);
     assert.match(rejected.stderr, /Unsafe command path segment/);
+  });
+});
+
+test("--new honors ASYNC_CLI_PROJECT_ROOT when no local overlay exists", async () => {
+  await withFixture(async ({ root, project, cwd, env }) => {
+    const override = path.join(root, "context-root");
+    await rm(path.join(project, ".git"), { recursive: true, force: true });
+
+    const result = spawnCli(["--new", "ops", "deploy"], {
+      cwd,
+      env: { ...env, ASYNC_CLI_PROJECT_ROOT: override }
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok((await stat(path.join(override, ".cli", "ops", "deploy", "script.ts"))).isFile());
+  });
+});
+
+test("--new creates cwd/.cli when no local overlay or git root exists", async () => {
+  await withFixture(async ({ project, cwd, env }) => {
+    await rm(path.join(project, ".git"), { recursive: true, force: true });
+
+    const result = spawnCli(["--new", "ops", "deploy"], { cwd, env });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok((await stat(path.join(cwd, ".cli", "ops", "deploy", "script.ts"))).isFile());
   });
 });
 
@@ -169,9 +215,22 @@ test("--mv moves command directories and warns about escaping imports", async ()
   });
 });
 
+test("--mv --to local uses cwd/.cli without a local overlay or git root", async () => {
+  await withFixture(async ({ project, cwd, globalRoot, env }) => {
+    await rm(path.join(project, ".git"), { recursive: true, force: true });
+    await writeScript(path.join(globalRoot, "ops", "rollback", "script.js"));
+
+    const local = await moveCommand({ cwd, env, to: "local" }, ["ops", "rollback"]);
+
+    assert.equal(local.to, path.join(cwd, ".cli", "ops", "rollback"));
+    assert.ok((await stat(path.join(cwd, ".cli", "ops", "rollback", "script.js"))).isFile());
+  });
+});
+
 test("--cp copies command directories without removing the source", async () => {
   await withFixture(async ({ project, globalRoot, env }) => {
     await writeScript(path.join(globalRoot, "ops", "seed", "script.js"), "import x from \"../lib.js\";\nconsole.log(x);\n");
+    await rm(path.join(project, ".git"), { recursive: true, force: true });
 
     const result = spawnCli(["--cp", "ops", "seed", "--to", "local"], { cwd: project, env });
     assert.equal(result.status, 0, result.stderr);
