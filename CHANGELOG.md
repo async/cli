@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 - 2026-07-11
+
+- Walks `.cli` overlays from the caller's working directory to the filesystem
+  root, nearest first, before falling back to the user-global command tree.
+- Continues past namespace-only overlays until a runnable command is found,
+  while preserving nearer runnable-prefix shadowing.
+- Uses the nearest existing local overlay for command lifecycle operations,
+  falling back to `ASYNC_CLI_PROJECT_ROOT` or the caller's working directory
+  without requiring a Git root.
+- Defines `CLI_PROJECT_ROOT` from the explicit override or the command overlay's
+  owner, with the nearest local owner or caller directory for global commands.
+- Removes the bundled MCP server, `cli --mcp`, `runMcpServer`, and `McpIo`.
+  `cli --list --json` remains the machine-readable command discovery surface.
+
 ## 0.2.3 - 2026-07-11
 
 - Covers symlinked file and directory contents in local-overlay trust hashes,

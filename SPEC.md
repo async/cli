@@ -3,8 +3,9 @@
 Status: accepted
 Package: cli
 Date: 2026-07-02
-Amended: 2026-07-06 (v0.2 surface: trust model, completions, --edit/--rm,
-templates, cli-cwd pragma, --doctor, MCP server mode, command packs)
+Amended: 2026-07-11 (v0.3 surface: filesystem-root discovery, trust model,
+completions, lifecycle commands, templates, cli-cwd pragma, --doctor,
+machine-readable listing, and command packs)
 
 ## Context
 

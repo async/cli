@@ -21,6 +21,7 @@ test("package metadata defines the @async/cli scaffold", async () => {
 test("root import is metadata-only", () => {
   assert.equal(packageInfo.name, "@async/cli");
   assert.equal(packageInfo.node, ">=24");
+  assert.equal(packageInfo.specVersion, 3);
   assert.equal(packageInfo.routerStatus, "implemented");
   assert.equal(packageInfo.contextPointerStatus, "implemented");
   assert.ok(!("runMcpServer" in asyncCli));
@@ -50,5 +51,5 @@ test("cli --version prints the package version", () => {
   });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), "0.2.3");
+  assert.equal(result.stdout.trim(), "0.3.0");
 });

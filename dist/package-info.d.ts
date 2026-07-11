@@ -1,9 +1,9 @@
 export declare const packageInfo: Readonly<{
     name: "@async/cli";
-    version: "0.2.3";
+    version: "0.3.0";
     node: ">=24";
     binaries: readonly ["cli", "async-cli"];
-    specVersion: 2;
+    specVersion: 3;
     routerStatus: "implemented";
     contextPointerStatus: "implemented";
 }>;

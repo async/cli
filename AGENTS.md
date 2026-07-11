@@ -11,9 +11,13 @@ that runs directory-backed project and user-global commands.
 - Preserve command directories as the move unit.
 - Keep `script` valid as a command segment; only `script.{ts,mts,js,mjs}` files
   make a command directory runnable.
-- v0.2 ships completions, the overlay trust model, `--edit`/`--rm`, templates,
-  the `cli-cwd` pragma, `--doctor`, MCP server mode, and command packs; keep
-  their contracts aligned with `SPEC.md`.
+- v0.3 ships filesystem-root discovery, completions, the overlay trust model,
+  `--edit`/`--rm`, templates, the `cli-cwd` pragma, `--doctor`, machine-readable
+  listing, and command packs; keep their contracts aligned with `SPEC.md`.
+- Command discovery never consults `.git`; only the `--agents` context-file
+  subsystem, including its doctor audit, uses the Git repository boundary.
+- Do not add a persistent or time-based command-path cache. Resolution must
+  observe the live filesystem on every invocation.
 - Do not add non-JavaScript entrypoints (`.sh`, `.py`) or a hosted pack
   registry.
 - Do not move or delete `../cli (1)/SPEC.md`; it is source material outside this

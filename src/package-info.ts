@@ -1,9 +1,9 @@
 export const packageInfo = Object.freeze({
   name: "@async/cli",
-  version: "0.2.3",
+  version: "0.3.0",
   node: ">=24",
   binaries: ["cli", "async-cli"] as const,
-  specVersion: 2,
+  specVersion: 3,
   routerStatus: "implemented",
   contextPointerStatus: "implemented"
 });

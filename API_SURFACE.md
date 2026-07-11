@@ -436,7 +436,7 @@ layers that on as an explicit consent action.
 ```ts
 packageInfo: {
   name: "@async/cli"; version: string; node: ">=24";
-  binaries: ["cli", "async-cli"]; specVersion: number;
+  binaries: ["cli", "async-cli"]; specVersion: 3;
   routerStatus: "implemented"; contextPointerStatus: "implemented";
 }
 renderHelp(commands?: string[]): string  // the "cli help" text
