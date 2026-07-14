@@ -1,12 +1,13 @@
 # @async/cli Repository Guide
 
-This repo owns the `@async/cli` package: a Node 24+ filesystem command router
-that runs directory-backed project and user-global commands.
+This repo owns the `@async/cli` package: a filesystem command router with Node
+24+ as the default binary host and Deno 2.7+ as an explicit alternate host.
 
 ## Working Rules
 
 - Use Node 24+, pnpm, ESM, TypeScript source under `src/`, and explicit `.js`
-  import extensions.
+  import extensions. Keep the published build compatible with Deno 2.7+ through
+  its Node and npm compatibility layer.
 - Keep runtime dependencies at zero unless a future ADR explicitly approves one.
 - Preserve command directories as the move unit.
 - Keep `script` valid as a command segment; only `script.{ts,mts,js,mjs}` files
@@ -14,6 +15,9 @@ that runs directory-backed project and user-global commands.
 - v0.3 ships filesystem-root discovery, completions, the overlay trust model,
   `--edit`/`--rm`, templates, the `cli-cwd` pragma, `--doctor`, machine-readable
   listing, and command packs; keep their contracts aligned with `SPEC.md`.
+- Deno is supported as an alternate host for the published CLI while keeping
+  the installed `cli` and `async-cli` binaries on Node; keep the runtime
+  contract and security wording aligned with `SPEC.md` and `SECURITY.md`.
 - Command discovery never consults `.git`; only the `--agents` context-file
   subsystem, including its doctor audit, uses the Git repository boundary.
 - Do not add a persistent or time-based command-path cache. Resolution must
@@ -56,4 +60,5 @@ For a narrower loop:
 ```bash
 pnpm run build
 pnpm test
+pnpm run test:deno
 ```

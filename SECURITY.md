@@ -16,6 +16,19 @@ overlay is reviewed and trusted again.
 `ASYNC_CLI_TRUST=off` deliberately disables this boundary and is intended only
 for controlled environments.
 
+## Runtime hosts
+
+The installed `cli` and `async-cli` binaries run through Node 24+. Deno 2.7+ is
+supported by launching the published CLI with `deno run -A`. The `-A` flag
+disables Deno's sandbox and gives the CLI and selected command the same
+current-user privileges as the Node path. Do not treat Deno hosting as an
+additional isolation boundary.
+
+The runtime host applies to the whole invocation. The router does not select a
+different runtime from a script extension, shebang, configuration file, or
+installed executable. Local-overlay trust is checked before command execution
+under either host.
+
 ## Inspection boundary
 
 `cli --list --json`, `cli --which`, help, completions, and doctor inspect the

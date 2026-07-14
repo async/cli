@@ -38,6 +38,7 @@ export default definePipeline({
   sync: {
     github: {
       nodeVersion: 24,
+      runtime: ["node@24", "deno@2.7.14"],
       cache: false,
       dependencyCache: false,
       packagePreviews: true,
@@ -61,7 +62,7 @@ export default definePipeline({
       runners: ["package"],
       targets: [{ package: "@async/cli" }],
       jobs: ["publish", "release-doctor", "snapshot", "verify"],
-      tasks: ["build", "check", "docs.site", "github.check", "pack", "sync.check", "test", "typecheck"],
+      tasks: ["build", "check", "deno-smoke", "docs.site", "github.check", "pack", "sync.check", "test", "typecheck"],
       scripts: {
         build: "run-task build",
         check: "run-task check",
@@ -81,6 +82,7 @@ export default definePipeline({
         "sync:check": "sync check",
         "sync:generate": "sync generate",
         test: "run-task test",
+        "test:deno": "run-task deno-smoke",
         typecheck: "run-task typecheck",
         verify: "run verify",
         "verify:force": "run verify --force"
@@ -115,6 +117,14 @@ export default definePipeline({
       cache: false,
       run: sh`node --test tests/*.test.js`
     }),
+    "deno-smoke": task({
+      description: "Pack and run the published CLI and a Deno command through Deno.",
+      dependsOn: ["build"],
+      inputs: packageInputs,
+      cache: false,
+      requires: { runtime: "deno" },
+      run: sh`node scripts/deno-smoke.js`
+    }),
     "docs.site": task({
       description: "Build the GitHub Pages documentation site.",
       inputs: ["README.md", "ROUTING.md", "API_SURFACE.md", "scripts/build-pages.js"],
@@ -136,7 +146,7 @@ export default definePipeline({
     }),
     pack: task({
       description: "Verify the public npm package contents without publishing.",
-      dependsOn: ["check", "test", "sync.check", "github.check"],
+      dependsOn: ["check", "test", "deno-smoke", "sync.check", "github.check"],
       inputs: [...packageInputs, ...pipelineInputs],
       cache: false,
       run: sh`pnpm run pack:check`
@@ -182,7 +192,7 @@ export default definePipeline({
   },
   jobs: {
     verify: job({
-      description: "Build, check, test, generated-workflow check, and package dry-run.",
+      description: "Build, check, test in Node and Deno, verify generated surfaces, and inspect the package.",
       target: "pack",
       trigger: ["pr", "main", "release", "manual"]
     }),

@@ -3,8 +3,8 @@
   "generator": "@async/pipeline",
   "config": "pipeline.ts",
   "workflow": ".github/workflows/async-pipeline.yml",
-  "hash": "sha256:39b80c452b2d8aada291844e1c9615184c99daf39d1ad282692c6beb9c6bcda8",
-  "generatedAt": "2026-07-06T19:22:06.088Z",
+  "hash": "sha256:346702d0cb2b33197d391c7524d0744cfc2e3c16ac2943ac05e11e2d93dc9e24",
+  "generatedAt": "2026-07-14T21:07:27.037Z",
   "actions": [
     {
       "id": "actions.checkout",
@@ -288,7 +288,8 @@
   "setup": "pnpm",
   "nodeVersion": "24",
   "runtime": [
-    "node@24"
+    "node@24",
+    "deno@2.7.14"
   ],
   "taskCache": false,
   "dependencyCache": false,

@@ -7,6 +7,11 @@ Amended: 2026-07-11 (v0.3 surface: filesystem-root discovery, trust model,
 completions, lifecycle commands, templates, cli-cwd pragma, --doctor,
 machine-readable listing, and command packs)
 
+> Amendment (2026-07-14): Deno 2.7+ is supported as an explicit alternate
+> host for the published CLI. Node 24 remains the default host for installed
+> binaries. The host applies to the full invocation; there is no per-command
+> runtime inference or selection.
+
 ## Context
 
 Projects need a low-friction way to keep small operational commands close to
@@ -125,7 +130,7 @@ block the global `gh clone` command.
 
 ### Script Contract
 
-Scripts are standalone Node ESM programs.
+Under the default Node host, scripts are standalone Node ESM programs.
 
 - Default scaffold is `script.ts`.
 - `.js` and `.mjs` run directly with Node.
@@ -137,6 +142,28 @@ Scripts are standalone Node ESM programs.
 - Stdio is inherited.
 - Exit codes and signals are propagated.
 - Scripts own their own validation, prompts, and task-specific help.
+
+### Deno Host Runtime
+
+Deno 2.7+ can host the same published package and command trees:
+
+```sh
+deno run -A npm:@async/cli/cli <command...>
+```
+
+- The installed `cli` and `async-cli` binaries remain Node 24 entrypoints.
+- The router launches a command through the executable hosting the CLI, so a
+  Deno-hosted invocation runs `.ts`, `.mts`, `.js`, and `.mjs` with Deno.
+- `process.argv.slice(2)` remains compatible; Deno commands may also use
+  `Deno.args`.
+- Working directory, stdio, injected `CLI_*` environment values, signals, and
+  exit codes follow the same contract under both hosts.
+- `-A` intentionally gives the Deno-hosted CLI and selected command the same
+  current-user privileges as the Node path. The overlay trust model remains the
+  execution boundary; Deno hosting is not a sandbox.
+- Runtime selection applies to the whole CLI invocation. File extensions,
+  shebangs, `deno.json`, and installed executables do not select a per-command
+  runtime.
 
 The runner injects:
 
@@ -488,7 +515,10 @@ overlay is refused by default — the direnv model.
 - Interactive trust prompts; trust is explicit via `cli --trust`.
 - Non-JavaScript entrypoints such as `.sh` or `.py`.
 - Runtime dependency management for scripts.
-- Cross-platform shell launcher behavior beyond Node process spawning.
+- Cross-platform shell launcher behavior beyond the selected JavaScript
+  runtime's process spawning.
+- Per-command runtime selection or automatic Deno inference.
+- A sandbox guarantee for Deno-hosted command execution.
 - Arbitrary context files for `--agents`; only `AGENTS.md` and explicit
   `--claude` are in scope.
 - Protocol servers and remote execution adapters; `cli --list --json` is the
@@ -507,6 +537,7 @@ overlay is refused by default — the direnv model.
 
 - ADR review against this charter.
 - Future package verification defined by ADR 1 through ADR 3.
+- Packed-artifact Deno host verification through the repository's Deno smoke.
 - Public wording leakage scan before docs are treated as complete.
 
 ## Acceptance Criteria
@@ -515,6 +546,8 @@ overlay is refused by default — the direnv model.
 - ADR 0 defines the package charter and full v1 behavior.
 - Later ADRs break implementation into scaffold, router/runtime, and agent
   integration slices.
+- Node remains the installed binary host and Deno 2.7+ is a verified alternate
+  host for the full CLI invocation.
 - Each implementation slice names allowed files, verification commands, and stop
   conditions.
 

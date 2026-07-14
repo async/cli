@@ -6,14 +6,15 @@ const site = {
   title: "@async/cli",
   repo: "cli",
   stage: "Alpha",
-  description: "Filesystem-routed project and user-global commands for Async workspaces.",
-  lead: "Create, inspect, run, and share directory-backed commands from trusted local overlays or a user-global tree — with shell completions, a tree doctor, command packs, and stable machine-readable discovery.",
-  quickstart: "pnpm add -D @async/cli\n\ncli --new gh pull      # scaffold .cli/gh/pull/script.ts\ncli gh pull 123        # run it: argv [\"123\"]\ncli --list             # what exists, what shadows what\ncli --list --json      # machine-readable command inventory\ncli --trust            # approve a cloned repo's overlay\ncli --mv gh pull --to root   # promote to ~/.cli"
+  description: "Filesystem-routed project and user-global commands for Node and Deno workspaces.",
+  lead: "Create, inspect, run, and share directory-backed commands from trusted local overlays or a user-global tree — with Node-default and Deno-hosted execution, shell completions, a tree doctor, command packs, and stable machine-readable discovery.",
+  quickstart: "pnpm add -D @async/cli\n\ncli --new gh pull      # scaffold .cli/gh/pull/script.ts\ncli gh pull 123        # run it: argv [\"123\"]\ncli --list             # what exists, what shadows what\ndeno run -A npm:@async/cli/cli --list  # alternate Deno host\ncli --list --json      # machine-readable command inventory\ncli --trust            # approve a cloned repo's overlay\ncli --mv gh pull --to root   # promote to ~/.cli"
 };
 
 const mdLinkTargets = {
   "ROUTING.md": "routing.html",
   "API_SURFACE.md": "api-surface.html",
+  "SECURITY.md": "security.html",
   "README.md": "index.html",
   "SPEC.md": "https://github.com/async/cli/blob/main/SPEC.md",
   "CHANGELOG.md": "https://github.com/async/cli/blob/main/CHANGELOG.md"
@@ -37,6 +38,7 @@ await mkdir(outDir, { recursive: true });
 const readme = await readFile("README.md", "utf8");
 const apiSurface = await readFile("API_SURFACE.md", "utf8");
 const routing = await readFile("ROUTING.md", "utf8");
+const security = await readFile("SECURITY.md", "utf8");
 
 await writeFile(join(outDir, "index.html"), layout({
   title: site.title,
@@ -56,13 +58,19 @@ await writeFile(join(outDir, "routing.html"), layout({
   body: docPage("Routing", routing)
 }));
 
+await writeFile(join(outDir, "security.html"), layout({
+  title: `${site.title} Security`,
+  description: `${site.title} trust and runtime security model.`,
+  body: docPage("Security", security)
+}));
+
 function docPage(title, markdown) {
   const body = markdown.replace(/^#\s+.*\r?\n/, "");
   return `<section>${docNav()}<h1>${escapeHtml(title)}</h1><div class="markdown">${renderMarkdown(body)}</div></section>`;
 }
 
 function docNav() {
-  return `<nav class="docnav"><a href="index.html">Overview</a><a href="routing.html">Routing</a><a href="api-surface.html">API Reference</a></nav>`;
+  return `<nav class="docnav"><a href="index.html">Overview</a><a href="routing.html">Routing</a><a href="api-surface.html">API Reference</a><a href="security.html">Security</a></nav>`;
 }
 
 function home(readme) {
@@ -82,6 +90,7 @@ function home(readme) {
         <a href="https://www.npmjs.com/package/${encodeURIComponent(site.title)}">npm</a>
         <a href="routing.html">Routing</a>
         <a href="api-surface.html">API Reference</a>
+        <a href="security.html">Security</a>
       </div>
     </section>
     <section>

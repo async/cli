@@ -230,18 +230,25 @@ habit, execution from local overlays is gated by trust.
 
 ## Execution contract
 
-Once resolved and trusted, the script runs as a plain Node process:
+Once resolved and trusted, the script runs through the executable hosting the
+CLI. The installed `cli` and `async-cli` binaries use Node 24+. An explicit
+`deno run -A npm:@async/cli/cli ...` invocation uses Deno 2.7+ for the CLI and
+the selected command:
 
 - argv: resolved extra words then `--`-forwarded words, at
-  `process.argv.slice(2)`.
+  `process.argv.slice(2)`. Deno commands may also use `Deno.args`.
 - cwd: the caller's working directory, unless the script opts out with a
   `// cli-cwd: project-root` or `// cli-cwd: script-dir` comment in its first
   16 lines.
 - stdio: inherited. Exit code: the script's own. Fatal signals map to
   `128 + signal`.
-- `.js`/`.mjs` run directly; `.ts`/`.mts` rely on Node 24 native type
-  stripping (TypeScript syntax that Node cannot strip, like `enum`, fails
-  with Node's own error).
+- `.js`/`.mjs` run directly. Under Node, `.ts`/`.mts` use Node 24 native type
+  stripping; under Deno they use Deno's TypeScript support.
+
+Runtime selection is per CLI invocation, not per command. The router does not
+infer a runtime from script extensions, shebangs, `deno.json`, or installed
+executables. Deno's `-A` mode intentionally grants the same current-user access
+as the Node path; overlay trust remains the command-execution boundary.
 
 Injected environment:
 
@@ -270,3 +277,5 @@ Injected environment:
 10. Everything above is inspectable without running anything: `--list`,
     `--which`, `--doctor`.
 11. Every invocation reads the live filesystem; no command-path cache is used.
+12. The host runtime applies to the whole invocation: Node for installed
+    binaries, or Deno when the published CLI is launched explicitly with Deno.

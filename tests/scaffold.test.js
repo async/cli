@@ -13,6 +13,7 @@ test("package metadata defines the @async/cli scaffold", async () => {
   assert.equal(packageJson.name, "@async/cli");
   assert.equal(packageJson.type, "module");
   assert.equal(packageJson.engines.node, ">=24");
+  assert.equal(packageJson.engines.deno, ">=2.7");
   assert.equal(packageJson.bin.cli, "dist/cli.js");
   assert.equal(packageJson.bin["async-cli"], "dist/cli.js");
   assert.deepEqual(Object.keys(packageJson.dependencies ?? {}), []);
@@ -21,7 +22,9 @@ test("package metadata defines the @async/cli scaffold", async () => {
 test("root import is metadata-only", () => {
   assert.equal(packageInfo.name, "@async/cli");
   assert.equal(packageInfo.node, ">=24");
-  assert.equal(packageInfo.specVersion, 3);
+  assert.equal(packageInfo.deno, ">=2.7");
+  assert.deepEqual(packageInfo.runtimes, ["node", "deno"]);
+  assert.equal(packageInfo.specVersion, 4);
   assert.equal(packageInfo.routerStatus, "implemented");
   assert.equal(packageInfo.contextPointerStatus, "implemented");
   assert.ok(!("runMcpServer" in asyncCli));

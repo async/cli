@@ -10,7 +10,7 @@ implementation and not a stable API). Routing semantics are specified in
 | | |
 | --- | --- |
 | Package | `@async/cli` |
-| Runtime | Node `>=24`, ESM only |
+| Runtime | Node `>=24` by default; Deno `>=2.7` as an alternate host; ESM only |
 | Runtime dependencies | none |
 | Types | shipped (`.d.ts`) |
 | Binaries | `cli`, `async-cli` (identical) |
@@ -39,6 +39,9 @@ interface DiscoverRootsOptions {
   home?: string;             // default env.HOME, then os.homedir()
 }
 ```
+
+The public types use Node compatibility types. Deno hosts the published build
+through its Node and npm compatibility layer.
 
 - Expected failures throw `CliError`; anything else (I/O errors, bugs) throws
   natively. Catch `CliError` to handle user-facing failures:
@@ -217,7 +220,8 @@ for fatal signals); SIGINT/SIGTERM received by the runner are forwarded to
 the child. The script's working directory honors its `// cli-cwd:` pragma;
 `CLI_*` environment values are injected (see ROUTING.md for the table).
 `options.env` entries are added to — not a replacement for — the runner's
-environment.
+environment. Execution uses the runtime hosting the CLI: Node for the installed
+binaries, or Deno when the published CLI is launched with `deno run -A`.
 
 Throws everything `resolveCommand` throws, plus `UNTRUSTED_OVERLAY` (exit
 code 3) when the selected overlay is local and not trusted, and
@@ -435,8 +439,9 @@ layers that on as an explicit consent action.
 
 ```ts
 packageInfo: {
-  name: "@async/cli"; version: string; node: ">=24";
-  binaries: ["cli", "async-cli"]; specVersion: 3;
+  name: "@async/cli"; version: string; node: ">=24"; deno: ">=2.7";
+  runtimes: ["node", "deno"];
+  binaries: ["cli", "async-cli"]; specVersion: 4;
   routerStatus: "implemented"; contextPointerStatus: "implemented";
 }
 renderHelp(commands?: string[]): string  // the "cli help" text

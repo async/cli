@@ -67,6 +67,11 @@ jobs:
           install: false
           cache: false
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: 2.7.14
+
       - name: Use current npm
         run: npm install -g npm@11.16.0
 
@@ -190,6 +195,11 @@ jobs:
           install: false
           cache: false
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: 2.7.14
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -232,6 +242,11 @@ jobs:
           runtime: node@24
           install: false
           cache: false
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: 2.7.14
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -290,6 +305,11 @@ jobs:
           install: false
           cache: false
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: 2.7.14
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -317,6 +337,11 @@ jobs:
           runtime: node@24
           install: false
           cache: false
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: 2.7.14
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -377,6 +402,11 @@ jobs:
           runtime: node@24
           install: false
           cache: false
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: 2.7.14
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -450,6 +480,11 @@ jobs:
           runtime: node@24
           install: false
           cache: false
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: 2.7.14
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

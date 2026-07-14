@@ -17,6 +17,10 @@ if (packageJson.engines?.node !== ">=24") {
   errors.push("package.json must require Node >=24");
 }
 
+if (packageJson.engines?.deno !== ">=2.7") {
+  errors.push("package.json must support Deno >=2.7");
+}
+
 if (packageJson.bin?.cli !== "dist/cli.js") {
   errors.push("package.json must expose cli bin");
 }
@@ -29,7 +33,7 @@ if (Object.keys(packageJson.dependencies ?? {}).length > 0) {
   errors.push("runtime dependencies must stay empty for the scaffold");
 }
 
-for (const requiredFile of ["README.md", "ROUTING.md", "API_SURFACE.md", "SPEC.md", "AGENTS.md", "CHANGELOG.md", "tsconfig.json"]) {
+for (const requiredFile of ["README.md", "ROUTING.md", "API_SURFACE.md", "SECURITY.md", "SPEC.md", "AGENTS.md", "CHANGELOG.md", "tsconfig.json"]) {
   try {
     await stat(requiredFile);
   } catch (error) {

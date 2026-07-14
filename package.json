@@ -6,7 +6,8 @@
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {
-    "node": ">=24"
+    "node": ">=24",
+    "deno": ">=2.7"
   },
   "repository": {
     "type": "git",
@@ -56,6 +57,7 @@
     "pipeline:sync:generate": "async-pipeline sync generate",
     "pipeline:task:build": "async-pipeline run-task build",
     "pipeline:task:check": "async-pipeline run-task check",
+    "pipeline:task:deno-smoke": "async-pipeline run-task deno-smoke",
     "pipeline:task:docs.site": "async-pipeline run-task docs.site",
     "pipeline:task:github.check": "async-pipeline run-task github.check",
     "pipeline:task:pack": "async-pipeline run-task pack",
@@ -63,12 +65,14 @@
     "pipeline:task:test": "async-pipeline run-task test",
     "pipeline:task:typecheck": "async-pipeline run-task typecheck",
     "pipeline:test": "async-pipeline run-task test",
+    "pipeline:test:deno": "async-pipeline run-task deno-smoke",
     "pipeline:typecheck": "async-pipeline run-task typecheck",
     "pipeline:verify": "async-pipeline run verify",
     "pipeline:verify:force": "async-pipeline run verify --force",
     "prepack": "pnpm run build",
     "release:check": "pnpm run pipeline:verify:force",
-    "test": "pnpm run build && node --test tests/*.test.js"
+    "test": "pnpm run build && node --test tests/*.test.js",
+    "test:deno": "pnpm run pipeline:test:deno"
   },
   "files": [
     "AGENTS.md",

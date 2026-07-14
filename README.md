@@ -31,8 +31,15 @@ pnpm add -D @async/cli    # per project
 pnpm add -g @async/cli    # or globally
 ```
 
-Requires Node 24+. The package ships two identical binaries, `cli` and
-`async-cli`, for setups where `cli` is taken.
+The installed `cli` and `async-cli` binaries require Node 24+. Deno 2.7+ is an
+alternate host for the published package:
+
+```sh
+deno run -A npm:@async/cli/cli --version
+```
+
+`-A` gives the Deno-hosted CLI the same current-user privileges as the Node
+binary; it is not a sandbox. See [SECURITY.md](SECURITY.md).
 
 ## Quick start
 
@@ -82,7 +89,9 @@ command-path cache.
 
 ## Writing commands
 
-A command script is a plain Node ESM program — no SDK, no wrapper:
+A command script is a plain ESM program — no SDK, no wrapper. The installed
+binaries run commands through Node; an explicit Deno invocation runs the same
+command tree through Deno:
 
 ```ts
 // cli: Open a pull request against main
@@ -93,13 +102,18 @@ console.log(`pulling ${id} in ${process.cwd()}`);
 
 | Contract | Detail |
 | --- | --- |
-| Arguments | `process.argv.slice(2)`, exactly as typed after the command |
+| Arguments | `process.argv.slice(2)` on both hosts; `Deno.args` is also available under Deno |
 | Description | First line `// cli: ...` shows in `--list`, `--list --json`, and `help` |
 | Working dir | Caller's cwd; `// cli-cwd: project-root` or `script-dir` to change |
 | Stdio / exit | Inherited; your exit code is the command's exit code |
-| Languages | `.js`/`.mjs` run directly; `.ts`/`.mts` via Node 24 type stripping |
+| Runtime | Node 24+ by default; `deno run -A npm:@async/cli/cli ...` uses Deno 2.7+ |
+| Languages | `.js`/`.mjs` run directly; `.ts`/`.mts` use the selected host's TypeScript support |
 | Helpers | Put shared code in `lib/` or `_anything/` — never routed |
 | Environment | `CLI_SCRIPT`, `CLI_ROOT`, `CLI_SCOPE`, `CLI_PROJECT_ROOT`, `CLI_COMMAND`, `CLI_CALLER_CWD` |
+
+Runtime selection applies to the whole CLI invocation. The router does not
+infer Deno from a file extension, shebang, or `deno.json`, so the ordinary npm
+binary remains fully compatible with existing Node commands.
 
 Templates: keep reusable starting points in `_templates/<name>/` in any
 command tree and scaffold from them with `cli --new api users --template
