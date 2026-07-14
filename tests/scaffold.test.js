@@ -54,5 +54,5 @@ test("cli --version prints the package version", () => {
   });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), "0.3.0");
+  assert.equal(result.stdout.trim(), "0.4.0");
 });

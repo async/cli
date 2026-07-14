@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 - 2026-07-14
+
+- Supports Deno 2.7+ as an explicit alternate host for the published CLI while
+  keeping Node 24+ as the default for installed binaries.
+- Verifies the packed package under Deno across `.js`, `.mjs`, `.ts`, and
+  `.mts` commands, including arguments, environment, working directory, and
+  nonzero exit propagation.
+- Provisions Deno in generated CI and publishes the runtime security contract
+  as a dedicated Pages document.
+
 ## 0.3.0 - 2026-07-11
 
 - Walks `.cli` overlays from the caller's working directory to the filesystem
